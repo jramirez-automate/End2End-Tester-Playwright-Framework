@@ -1,115 +1,122 @@
 # End2End Tester Playwright Framework
 
-A standalone Playwright end-to-end suite you can point at any web app, plus the ticket workflow that authors and evidences it. Tests run against **deployed environments** selected by `.env.*` files — this repo never builds the app under test.
+A Playwright end-to-end suite you can point at any web app, together with the
+ticket workflow that authors specs, evidences them, and publishes the result to
+your tracker, wiki, test management tool, and chat.
 
-Use it as a GitHub template, then adapt the login page object, the routes, and the environment names to your product.
-
-Companion docs:
-- **`AGENTS.md`** — the conventions contract (layout, tags, data discipline, evidence). Read it before adding specs.
-- **`COVERAGE.md`** — the ledger: which tickets are covered by which specs.
-- **`docs/APP-MAP.md`** — accumulated app knowledge (routes, helpers, quirks).
-
-## Structure
-
-```
-tests/<feature>/         # specs grouped by feature domain (auth/, example/, …)
-pages/                   # page objects (extend BasePage; barrel index.ts)
-types/                   # shared types
-utils/                   # env.ts (TEST_ENV/write-env/site), test-data.ts (e2eName), cleanup.ts (CleanupRegistry)
-docs/                    # APP-MAP.md
-templates/               # copy-paste scaffolds (not compiled)
-evidence-reporter.ts     # renames evidence artifacts to descriptive per-test names
-```
-
-Ticket traceability is by **tag**, not by directory: `test.describe("...", { tag: "@ABC-123" }, ...)`. Run one ticket's tests with `TICKET=ABC-123 npm run test:dev`.
-
-## Environments
-
-`TEST_ENV` selects the `.env.<env>` file and the target. **Data safety is enforced in `playwright.config.ts`:** only the write envs (`local`, `dev`, `staging` — `WRITE_ENVS` in `utils/env.ts`) run write/destructive flows; every other env is forced to `@smoke` (read-only) tests, so a write test can never touch production data even if pointed there.
-
-| TEST_ENV  | Target                            | Tests that run       |
-| --------- | --------------------------------- | -------------------- |
-| `local`   | `http://localhost:3000` ²         | all (write + smoke)  |
-| `dev`     | your deployed dev host            | all (write + smoke)  |
-| `staging` | your deployed staging host        | all (write + smoke)¹ |
-| `prod`    | your production host              | `@smoke` only        |
-
-¹ Staging writes apply to local/ad-hoc runs only: in CI staging stays `@smoke` unless `E2E_STAGING_WRITES=true` is deliberately set on the pipeline (`utils/env.ts` → `isWriteEnv`).
-
-² This repo doesn't build the app: `TEST_ENV=local` expects your dev server already running on `:3000`. The default targets are the **deployed** environments.
-
-Rename or add environments by editing `WRITE_ENVS` in `utils/env.ts` and the matching npm scripts. Write specs read the tenant/site from `E2E_SITE_NAME` (via `utils/env.ts` → `siteName()`) — never hardcode it.
-
-## Quick start
+Clone it and run `npm test`. The default environment targets public sample apps,
+so the suite is green before you configure anything.
 
 ```bash
-nvm use                                    # Node version from .nvmrc
-npm ci
-npx playwright install --with-deps chromium
-cp .env.example .env.dev                   # then fill in your own values
+nvm use && npm ci && npx playwright install --with-deps chromium
+npm test
 ```
+
+## What is in the box
+
+| Piece | What it gives you |
+| --- | --- |
+| Multi-environment config | `TEST_ENV` picks the target; write flows are blocked on production by a guard, not by discipline |
+| Saved sign-in | One login per run as a setup project, reused by every spec |
+| Page objects | `BasePage` plus working examples; selectors never leak into specs |
+| Data discipline | `e2eName()` for unique records, `CleanupRegistry` for last-in-first-out teardown |
+| Evidence bundles | A screenshot, video, and trace per test, plus a machine-written results file |
+| Publishing pipeline | Attach media, post an inline-media results table, publish a test plan, create test cycles, notify chat |
+| Allure reporting | Trend-friendly results alongside the built-in HTML report |
+| Agent tooling | `.claude/` and `.cursor/` trees with the same four agents, the ticket command, and shared skills |
+| CI | Typecheck, tree-sync, and the demo suite on every push, with no secrets |
+
+## Run
 
 ```bash
-# Environment files (all gitignored — never commit secrets)
-#   .env.local / .env.dev / .env.staging / .env.prod
-#     → BASE_URL, E2E_USERNAME, E2E_PASSWORD, and optionally
-#       E2E_LOGIN_PATH, E2E_HOME_PATH, E2E_HOME_HEADING, E2E_SITE_NAME
-
-# Run (everything runs from the repo root)
-npm run test:dev                           # headless, full suite on deployed dev
-npm run test:headed                        # browser visible
-npm run test:staging                       # full suite (write env)
-npm run test:prod                          # @smoke only
-TICKET=ABC-123 npm run test:dev            # only tests tagged @ABC-123
-TICKET=ABC-123 npm run test:evidence       # per-ticket evidence bundle → evidence/ABC-123/
-npm run typecheck
+npm test                              # demo suite (public sample apps)
+npm run test:dev                      # your dev environment
+npm run test:staging
+npm run test:prod                     # @smoke only
+npm run test:headed                   # watch it
+npm run test:ui                        # Playwright UI mode
+TICKET=ABC-123 npm run test:dev        # only tests tagged @ABC-123
+TICKET=ABC-123 npm run test:evidence   # evidence bundle → evidence/ABC-123/
+npm run allure                         # generate and open the Allure report
+npm run typecheck && npm run check:tool-sync
 ```
 
-In CI, `BASE_URL` and credentials come from repository secrets instead of a file.
+Use `--` before Playwright options so npm passes them through:
 
-### Point it at your app
+```bash
+npm run test:dev -- tests/checkout/cart-checkout.spec.ts -g "confirmation"
+```
 
-1. Set `BASE_URL` and a dedicated test account in `.env.<environment>`.
-2. Match `pages/LoginPage.ts` to your sign-in form (roles and labels first). It already handles a single form and the email-then-password pattern.
-3. Set `E2E_HOME_PATH` and `E2E_HOME_HEADING` so the smoke test proves the shell loaded.
-4. If write tests must pick a tenant or site, set `E2E_SITE_NAME` and implement `HomePage.ensureSiteSelected`.
-5. Replace `tests/example/` (ignored until `E2E_INCLUDE_EXAMPLES=1`) with a real feature.
+## Point it at your app
 
-## Data safety: `@smoke` (read-only) vs write tests
+1. `cp .env.example .env.dev`, then set `BASE_URL` and a dedicated test account.
+2. Adapt `pages/LoginPage.ts` to your sign-in form. It already handles a single
+   form and the email-then-password pattern, and it is the only file most apps
+   need to change.
+3. Replace the demo specs and page objects under `tests/` and `pages/demo/` with
+   your own features. Scaffolds live in `templates/`.
+4. If write tests must pick a tenant or site, set `E2E_SITE_NAME` and read it
+   through `siteName()`.
 
-- **`@smoke`** — tag read-only tests (no create/edit/delete). Safe on any env. Tag a whole file with `test.describe("...", { tag: "@smoke" }, () => { ... })`. See `tests/auth/smoke.spec.ts`.
-- **Write tests** — tag with their ticket only (no `@smoke`), e.g. `{ tag: "@ABC-123" }`. The config's `grep` guard means they only run on write envs, never production.
-- **Mandatory cleanup** — every created entity is named with `e2eName("Kind")` (→ `E2E-Kind-…`, instantly identifiable if a crashed run leaves strays) and deleted in `afterEach` — either a page object's best-effort `delete*ByName` or `CleanupRegistry` (`utils/cleanup.ts`, LIFO) for multi-entity flows where a dependent must be removed before the record it points at.
-- **Watch for paginated, sorted lists** — search for the name before asserting a row; `E2E-…` names often sort onto page 2+.
-- **Leaks are worth recording.** If a screen has no delete, note it in `COVERAGE.md` and prefer an API-based cleanup rather than letting each run add a row.
+### Environments
 
-## Evidence captures (screenshots / videos for a ticket)
+`TEST_ENV` selects `.env.<TEST_ENV>`. **Data safety is enforced in
+`playwright.config.ts`:** only write environments (`WRITE_ENVS` in
+`utils/env.ts`) run state-changing flows. Everything else is filtered to
+`@smoke`, so a write test cannot touch production even when pointed there.
 
-One command produces one ticket's complete bundle, ready to attach to a ticket or a pull request:
+| TEST_ENV | Target | Tests that run |
+| --- | --- | --- |
+| `demo` | public sample apps, no credentials | all (write + smoke) |
+| `local` | your dev server | all (write + smoke) |
+| `dev` | your deployed dev host | all (write + smoke) |
+| `staging` | your deployed staging host | all (write + smoke)¹ |
+| `prod` | your production host | `@smoke` only |
+
+¹ Staging stays read-only in CI unless `E2E_STAGING_WRITES=true` is set
+deliberately.
+
+Ask before running against a shared or production environment. That is a rule the
+agents follow too (`.cursor/rules/env-run-approval.mdc`).
+
+## Data safety
+
+- `@smoke` marks read-only tests. Safe anywhere, including production.
+- Write tests carry only their ticket tag, so the guard keeps them off production.
+- Every record a test creates is named with `e2eName()` (`E2E-Item-…`, so strays
+  from a crashed run are obvious) and deleted in `afterEach` through
+  `CleanupRegistry`, which unwinds last in, first out.
+- Watch for paginated, sorted lists: search for the name before asserting a row.
+
+## Evidence
 
 ```bash
 TICKET=ABC-123 npm run test:evidence
 ```
 
-`EVIDENCE=true` captures a **screenshot and video for every test (pass or fail)** plus a trace; `TICKET=ABC-123` filters to that ticket's tagged tests and routes everything into `evidence/ABC-123/`. The custom `evidence-reporter.ts` copies each test's artifacts to descriptive names derived from the test title, with the environment in the filename so two environments can sit side by side:
+`EVIDENCE=true` keeps a screenshot, video, and trace for **every** test, pass or
+fail, and routes them into `evidence/ABC-123/` with the environment in each
+filename, so two environments coexist:
 
 ```
 evidence/ABC-123/
-  creates-an-item-that-appears-in-the-list-dev.png / .webm / -trace.zip
-  deletes-an-item-dev-FAILED.png / .webm                  (failed tests get a -FAILED suffix)
-  artifacts/              # raw Playwright layout (kept for traceability)
-  report/                 # browsable HTML report (npx playwright show-report evidence/ABC-123/report)
+  a-cart-can-be-checked-out-to-a-confirmation-dev.png / .webm / -trace.zip
+  adding-products-updates-the-cart-badge-dev-FAILED.png     (failures keep their proof)
+  results-dev.json        # machine-written: status, tags, media, error per test
+  SUMMARY.md              # generated table, one column per environment
+  report/                 # npx playwright show-report evidence/ABC-123/report
 ```
 
-Everything under `evidence/` is git-ignored — regenerate on demand. Without `TICKET`, evidence goes to `evidence/` for the whole run. Normal runs (without `EVIDENCE`) stay fast and only keep artifacts on failure.
+`results-<env>.json` is what makes publishing hands-off: the results table is
+generated from the run, never typed out. Everything under `evidence/` is
+gitignored.
 
 ### The subject must be visible
 
-A green test whose screenshot shows a blank page, a spinner, the wrong scroll position, or a closed dialog is not proof. Playwright's default end-of-test shot is the final viewport, so frame the subject before the test ends:
-
-- Scroll it into view (`scrollIntoViewIfNeeded`, or a page-object helper that centres the row).
-- Keep the proving UI open — don't dismiss the dialog or toast that carries the criterion.
-- Attach a focused shot mid-test when the end state would hide it:
+A green test whose screenshot shows a blank page, a spinner, or a closed dialog
+is not proof. Playwright's end-of-test shot is the final viewport, so frame the
+subject: scroll it into view, keep the proving dialog or toast open, and attach a
+focused shot when the end state would hide it.
 
 ```ts
 await test.info().attach("screenshot", {
@@ -118,201 +125,111 @@ await test.info().attach("screenshot", {
 });
 ```
 
-- End the test while the subject is still on screen, so the proving frames are in the `.webm`.
+Mid-test attachments are used as the primary image for exactly this reason.
 
-## Auth is serialised under concurrency
+## Publishing
 
-Global setup signs in once and saves the session to `.auth/user.json`; every test starts from it. Hosted identity providers throttle bursts of sign-ins and token exchanges, so local runs cap `workers: 2` with `retries: 1`, and CI stays serial (`workers: 1`). If you add many specs and start seeing mass navigation timeouts with an error dialog in the screenshot, lower `workers` further.
-
-Escape hatches while iterating:
-
-```bash
-E2E_REUSE_AUTH=1 npm run test:dev    # reuse .auth/user.json, skip the login
-E2E_SKIP_AUTH=1 npm run test:dev     # save an empty session (public pages only)
-```
-
-## CI (GitHub Actions)
-
-This repo ships `.github/workflows/e2e.yml`.
-
-- **Push and pull request** — typecheck only, so the default branch stays cheap and green.
-- **On demand** — run the suite from the **Actions** tab (`workflow_dispatch`) and pick the environment. Production stays on `@smoke` through the config guard regardless of what you select.
-- **Required secrets:** `BASE_URL`, `E2E_USERNAME`, `E2E_PASSWORD`. Optional: `E2E_SITE_NAME`, `E2E_HOME_PATH`, `E2E_HOME_HEADING`, `E2E_LOGIN_PATH`.
-- The HTML report is uploaded as an artifact on every dispatched run.
-
-Add a schedule block to the workflow when you want a nightly regression run.
-
-## Authoring accelerators
-
-The suite is built to make writing a new spec fast — **reuse before you write**:
-
-- **Navigation** — `docs/APP-MAP.md` → "Navigation index" answers "how do I reach page X" (deep link or click path). Check it before hunting routes.
-- **Interactions** — `utils/interactions.ts` + `docs/APP-MAP.md` → "Helpers index" hold shared drivers (`waitForModalDetachedThenToast`, `collectPageErrors`). Reuse them instead of re-writing dialog and dropdown code; extract a new helper the second time you write the same interaction, and register it in the Helpers index.
-- **Scaffolds** — copy `templates/spec.template.ts` / `templates/page-object.template.ts` for a ready-to-fill shell (tags, cleanup, signed-in ritual, money-assertion placeholder).
-- **Session is pre-loaded** — `globalSetup` saves the signed-in session, so specs call `HomePage.open()` instead of driving the login form every test.
-- **Codegen** — after one run has written `.auth/user.json`, open an authenticated recorder and refine what it gives you into page objects (never paste raw codegen into specs):
+One command turns a verified bundle into published results. Every provider is
+configured, never hardcoded, and anything set to `none` is skipped.
 
 ```bash
-npx playwright codegen --load-storage=.auth/user.json "$BASE_URL"
+cp .env.publish.example .env.publish        # then fill in what you use
+node scripts/publish.mjs all --ticket ABC-123 --dry-run
+node scripts/publish.mjs all --ticket ABC-123 --summary "Checkout regression"
 ```
 
-## Adding e2e for a ticket
+| Command | What it does |
+| --- | --- |
+| `summary` | Write `SUMMARY.md` from the run results |
+| `attach` | Upload the media the results table references, skipping duplicates |
+| `comment` | Post the results table with media **embedded inline**, not linked |
+| `plan` | Create or update the test plan page on the wiki |
+| `cycles` | Create test cases, a cycle per environment, and an execution per case |
+| `notify` | Post a chat card, gated to `NOTIFY_ON_ENVS` and a green run |
+| `cleanup` | Delete attachments no comment references, keeping anything it did not upload |
+| `all` | The whole sequence |
 
-### The full flow
+Providers: tracker `jira` or `github`, wiki `confluence`, test management
+`zephyr`, chat `teams` or `slack`. Swapping one means writing one adapter in
+`scripts/lib/providers/`; the CLI and the evidence format do not change.
 
-```mermaid
-flowchart TD
-    U(["ticket ABC-123"]) --> A
+Two details worth knowing:
 
-    A["1 · Read the ticket<br/>extract criteria → testable checklist"] --> B{"Already covered?<br/>(COVERAGE.md)"}
-    B -- "yes" --> STOP(["stop — ask what to add"])
-    B -- "no" --> C
+- **Inline media needs ADF.** A markdown comment can only link to an attachment.
+  The Jira adapter resolves each attachment to its media services id and builds
+  real media nodes, so screenshots and playable video render in the table.
+- **Cleanup is guarded.** A file is only a delete candidate when this pipeline
+  uploaded it, it looks like a capture artifact, and no comment references it.
+  Anything else is kept and reported, so nobody's source material disappears.
 
-    C["2 · Map the screen:<br/>route → components → selectors<br/>→ network waits → reusable page objects"]
+Without credentials every command runs as a dry run, which is also how you demo
+the pipeline safely.
 
-    C --> E["3 · TDD slice loop<br/>seam table → one test → run alone → red proof → green → next<br/>tests/&lt;feature&gt;/*.spec.ts · @ABC-123 tag · e2eName() · afterEach cleanup"]
-    E --> LIST["sanity: npx playwright test --list<br/>+ TICKET=ABC-123 filter shows exactly them<br/>+ every seam-table row proven or NOT AUTOMATED"]
+## Agent tooling
 
-    LIST --> F["4 · Full-suite regression on dev<br/>triage → fix → loop until green · then refactor pass (no assertion changes)"]
-    F -- "real app bug suspected" --> BUG(["⛔ stop and surface it"])
-    F -- "green" --> Q1{"5 · Also run on staging?"}
-    Q1 -- "yes" --> F2["rerun on staging"]
-    Q1 -- "no" --> G
-    F2 --> G
+The same workflow ships for two AI tools, and a checker keeps them honest.
 
-    G["6 · TICKET=ABC-123 npm run test:evidence<br/>→ evidence/ABC-123/ descriptive .png + .webm + traces"]
-    G --> H["Verify every artifact visually<br/>subject in frame, criterion readable"]
-    H --> L["7 · Append the COVERAGE.md ledger row"]
-    L --> DONE(["✅ report: coverage, spec paths,<br/>run results per env, bundle path"])
-```
+- `.agents/skills/` — shared skills (`e2e-testing-patterns`, `tdd`), symlinked
+  into `.claude/skills/` and `.cursor/skills/`
+- Four agents in both trees: **explorer** (maps routes and selectors, read-only),
+  **runner** (runs and triages until green), **evidence** (captures and verifies),
+  **publisher** (dry-runs, publishes, raises bugs with their own proof)
+- `e2e-ticket` command — the staged pipeline from requirements to published result
+- `.cursor/rules/` — conventions, environment approval, evidence visibility, publishing
+- `npm run check:tool-sync` fails when the two trees drift apart
 
-Rules every step obeys live in `AGENTS.md`; credentials only in gitignored `.env.*`.
+`skills-lock.json` lists useful third-party Playwright skills. They are not
+vendored here; install them into `.agents/skills/` if you want them.
 
-### Manual checklist
+## CI
 
-1. **Page object** — add or extend a class in `pages/` for the screen you touch. Prefer `getByRole` selectors (see "Selectors: lessons learned" below).
-2. **Spec** — add `tests/<feature-domain>/<flow>.spec.ts` (feature directories, never ticket directories). Start from the signed-in ritual (`home.open()`), then drive the flow.
-3. **Prove it can fail** — one test at a time, never batch-written: the first run should be red at the money assertion. If it passes immediately because the feature already shipped, sensitivity-check it — mutate the key expectation, confirm it fails there, revert exactly, and never commit the mutation.
-4. **Tag it** — always tag the describe block with the ticket: `{ tag: "@ABC-123" }`. Add `"@smoke"` too only if it's read-only, since that also runs it against production.
-5. **Data discipline** — created entities use `e2eName("Kind")` and are deleted in `afterEach` (`CleanupRegistry` for multi-entity flows). Site via `siteName()`.
-6. **Run it headed** before pushing: `npm run test:headed -- tests/<feature>/<flow>.spec.ts`.
-7. **Ledger** — add the ticket's row to `COVERAGE.md`.
+`.github/workflows/e2e.yml`:
 
-### Signed-in ritual (we are already signed in)
+- **Push and pull request** — typecheck, tree-sync, and the full demo suite. No
+  secrets needed, so the badge means something on a fresh fork.
+- **On demand** — pick an environment from the Actions tab, optionally with a
+  ticket key to capture and upload an evidence bundle. Production stays `@smoke`
+  through the config guard regardless of what you select.
+- Secrets for your own environments: `BASE_URL`, `E2E_USERNAME`, `E2E_PASSWORD`,
+  and optionally `E2E_SITE_NAME` and `E2E_LOGIN_PATH`.
 
-Before any test that needs the app, we run a **signed-in ritual** so we know we're on the landing page:
+## Layout
 
-1. **Auth** — global setup signs in once and saves the session; tests start with it.
-2. **Open the app** — `HomePage.open()` navigates to `E2E_HOME_PATH`, clears a first-run dialog if one appears, and waits out any busy indicator.
-3. **Prove the shell** — `expectSignedIn()` waits for the heading named by `E2E_HOME_HEADING`.
-
-After this we are guaranteed to be signed in and on a rendered page; tests can then navigate anywhere. Keep that ritual in `HomePage`, not copied into each spec.
-
-### Run a single case (one file / one test)
-
-Use `--` before Playwright options so npm passes them through (all commands from the repo root):
-
-```bash
-# One spec file
-npm run test:dev -- tests/example/items.spec.ts
-
-# One test by name (grep)
-npm run test:dev -- -g "appears in the list"
-
-# Both, watched in a browser
-npm run test:headed -- tests/example/items.spec.ts -g "appears in the list"
-```
-
-Without the `--`, you may see "No tests found" because the filter never reaches Playwright.
-
-### UI mode (interactive)
-
-Opens Playwright's UI so you can run tests, watch the run, step through, and use **Pick locator** or **Trace** to explore the page.
-
-```bash
-npm run test:ui
-```
-
-**Tip:** the first time you use UI mode (or after clearing `.auth/`), run **Run all** once so `globalSetup` saves the session to `.auth/user.json`. After that, running a single test reuses it. The test timeout is 90s so slower create/edit/delete flows don't time out in UI or headed mode.
-
----
+| Path | Role |
+| --- | --- |
+| `tests/<feature>/` | Specs by feature. The ticket is a tag, not a folder. |
+| `tests/auth.setup.ts` | Signs in once; the `setup` project every test depends on |
+| `pages/` | Page objects. Selectors live here. |
+| `utils/` | Environment loading, test data, cleanup, shared interactions |
+| `scripts/` | Publishing pipeline and the tool-sync checker |
+| `templates/` | Scaffolds for a new spec and a new page object |
+| `docs/APP-MAP.md` | How to reach each page, and the helpers that already exist |
+| `fixtures.ts` | Import `test` and `expect` from here |
 
 ## Selectors: lessons learned
 
-### Prefer `getByRole` over IDs and raw CSS
+- **Prefer `getByRole` and `getByLabel` over ids and CSS.** Responsive pages
+  often render mobile and desktop copies of the same form sharing ids;
+  `locator("#id")` picks the first in DOM order, which may be the hidden one, so
+  the test fills an invisible field and appears to do nothing.
+- **`.or()` needs `.first()` on the composition.** Two single-element locators
+  combined with `.or()` resolve to two elements and trip strict mode.
+- **Never wait on the app URL alone after a sign-in submit.** Sign-in URLs embed
+  `redirect_uri`, so a URL match can succeed while the browser is still on the
+  identity provider. Wait for something that only exists afterwards.
+- **Dialog first, then toast.** Wait for the dialog to detach, then assert the
+  toast. Asserting the toast while the dialog is still open races with its DOM.
+  `waitForModalDetachedThenToast` does both.
+- **Trust the deployed DOM over the source you are reading.** What is deployed can
+  lag or lead the branch in front of you.
 
-- **Problem:** pages can have duplicate DOM (for example mobile and desktop copies of the same form, sharing IDs). `locator("#id")` picks the **first in DOM order**. If that copy is hidden, you fill or click the **hidden** element, the UI doesn't change, and the test looks like it did nothing.
-- **Fix:** target what is actually exposed and visible — role-based selectors, or a stable `name` attribute for form fields that roles don't resolve.
-- **Rule:** for inputs and buttons prefer `getByRole('textbox', { name: '...' })` and `getByRole('button', { name: '...' })` over `locator("#id")` whenever the page has duplicate markup.
+## Adding a feature test
 
-### Sign-in flows
-
-Hosted sign-in is the most fragile part of any suite. Two patterns cover most of them, and `pages/LoginPage.ts` handles both:
-
-- **Single form** — username and password on one screen, then submit.
-- **Email first** — an email field and Continue, then a password field on the next screen.
-
-> ⚠️ **Do not** wait on the app URL alone after submit. Sign-in URLs embed `redirect_uri=…`, so a naive `waitForURL` on your app host can match **while still on the identity provider**. Wait for a signal that only exists after the exchange: the password field detaching, a token in storage, or a known element of your shell.
-
-If your app federates to a corporate identity provider, keep a non-federated test account. Otherwise the run ends up on a third-party password page the suite has no business automating.
-
-### Duplicate IDs and strict mode
-
-If you see "strict mode violation: locator resolved to 2 elements", the page has duplicate matching nodes. Scoping to "the first form" by DOM order can still target the hidden one. Prefer `getByRole` so the engine picks the visible control, or add `.filter({ visible: true })`.
-
-### When you must use IDs or form scope
-
-With a single form and no duplicate markup, `form[name="..."]` plus `#id` is fine. For responsive pages that duplicate the form, default to `getByRole` for the interactive elements.
-
----
-
-## After submit: dialog then toast
-
-When a flow submits a form in a **dialog** and the app shows a **success toast**:
-
-1. **Wait for the dialog to be gone first.** It may show a loading state before closing. Wait for it to be detached from the DOM.
-2. **Then assert the toast.**
-
-**Why that order:** asserting the toast while the dialog is still open races with its DOM and produces flaky failures. Confirming the dialog closed means the request finished, which makes the toast assertion stable. `waitForModalDetachedThenToast` in `utils/interactions.ts` does both in one call.
-
-Toasts usually auto-dismiss after a few seconds, so assert them before anything slow, and capture evidence while they are still on screen.
-
-> ⚠ **Deployed markup beats source.** What is deployed can lag or lead the source you are reading. Derive selectors from the DOM you can actually see in the running environment.
-
----
-
-## How to add or teach a new selector
-
-When you need to select something on the page (dropdown, button, link, input), use one of these.
-
-### Option A: inspect and send the HTML (best for one-off elements)
-
-1. Open the page in a browser (run `npm run test:headed` and let it sign in, or open the app manually).
-2. Right-click the element → **Inspect**.
-3. In DevTools, right-click the highlighted node → **Copy** → **Copy element** (or **Copy outerHTML**).
-4. Paste it into the chat and say what the element is ("site dropdown", "client select").
-5. You get back a stable selector, preferring `getByRole` and `getByLabel` when the page has duplicate markup.
-
-### Option B: describe what the user sees
-
-For example:
-
-- "A dropdown labelled **Site** with options like 'Site A', 'Site B'."
-- "A button that says **Save** in the header."
-- "A combobox with placeholder **Select client**."
-
-You get a proposed locator such as `page.getByRole('combobox', { name: 'Site' })`. If the first suggestion doesn't match, refine with Option A.
-
-### Option C: let Playwright generate the selectors (good for flows)
-
-1. After one run has created `.auth/user.json`, open an authenticated recorder:
-   `npx playwright codegen --load-storage=.auth/user.json "$BASE_URL"`.
-2. In the opened browser, do the exact flow.
-3. Copy the generated `getByRole` / `click` / `fill` lines.
-4. Paste them in, and they get turned into a page object or test steps that follow the rules above (roles first, no fragile IDs where the DOM is duplicated).
-
-### What to send in one sentence
-
-- **Option A:** "Here's the HTML for [element name]:" plus the pasted HTML.
-- **Option B:** "I need to select [element name]; on the page it looks like [label/text/placeholder]."
-- **Option C:** "Here's the codegen output for [flow name]:" plus the pasted script.
+1. Map the screen. `docs/APP-MAP.md` first, the app second.
+2. Copy `templates/spec.template.ts` and `templates/page-object.template.ts`.
+3. Write **one** test, run it alone, and watch it fail at the assertion that
+   encodes the requirement. If the feature already works and it passes first
+   time, mutate the assertion, confirm it fails there, and revert exactly.
+4. Drive it green, then write the next one. Never batch-write specs.
+5. Tag the describe with the ticket, add `@smoke` only when it is read-only.
+6. Capture evidence, publish, and append the row to `COVERAGE.md`.

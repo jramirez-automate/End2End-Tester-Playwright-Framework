@@ -1,0 +1,30 @@
+---
+description: Core conventions for this Playwright suite. Always applied.
+alwaysApply: true
+---
+
+This repository is a standalone Playwright end-to-end suite. Tests run against a
+deployed app over HTTP; there is no application source here. Full contract:
+`AGENTS.md`. App knowledge: `docs/APP-MAP.md`.
+
+- Import `test` and `expect` from `fixtures.ts`, never from `@playwright/test`.
+- Specs live in `tests/<feature>/` by feature domain, never by ticket. Ticket
+  traceability is a tag: `test.describe("…", { tag: "@ABC-123" }, …)`.
+- Selectors live in page objects under `pages/`, not in specs. Prefer
+  `getByRole` and `getByLabel`; scope a dialog with `getByRole("dialog")`.
+  An `.or()` chain of single-element locators still resolves to several, so put
+  `.first()` on the composition.
+- Write flows run on write environments only (`WRITE_ENVS` in `utils/env.ts`).
+  Production runs `@smoke`. Never edit that guard to make a run possible.
+- Name every record a test creates with `e2eName()` and delete it in
+  `test.afterEach` through `CleanupRegistry`, which runs last in, first out.
+- Look before you build: `docs/APP-MAP.md` → Navigation index for "how do I
+  reach page X", Helpers index and `utils/interactions.ts` for "is there already
+  a driver for this widget". Write the same interaction twice and extract it.
+- Author test-first, one slice at a time: one test, run it alone, see it fail at
+  the assertion that encodes the requirement, then drive it green. Never
+  batch-write specs.
+- Credentials live only in gitignored `.env.*` and `.env.publish`. Never write a
+  secret into a tracked file.
+- Read the app surgically. Grep for the route, open the components it renders,
+  summarise. Never dump whole files or raw API responses into the chat.

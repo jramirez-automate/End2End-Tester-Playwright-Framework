@@ -7,16 +7,39 @@ import type { E2ECredentials, E2EEnvironment } from "../types";
  * Environments where create / edit / delete tests may run.
  * Anything else (including prod) is forced to @smoke by playwright.config.ts.
  */
-export const WRITE_ENVS = ["local", "dev", "staging"];
+export const WRITE_ENVS = ["demo", "local", "dev", "staging"];
+
+/**
+ * Public demo targets, so a fresh clone runs green with no credentials
+ * and no .env file. Replace with your own app by setting TEST_ENV.
+ */
+export const DEMO_DEFAULTS: Record<string, string> = {
+	BASE_URL: "https://www.saucedemo.com",
+	E2E_USERNAME: "standard_user",
+	E2E_PASSWORD: "secret_sauce",
+	TODO_APP_URL: "https://demo.playwright.dev/todomvc",
+};
 
 export function currentTestEnv(): string {
-	return process.env.TEST_ENV ?? "local";
+	return process.env.TEST_ENV ?? "demo";
 }
 
-/** Load .env.<TEST_ENV>. Variables already set (CI secrets) are left alone. */
+export function isDemoEnv(testEnv = currentTestEnv()): boolean {
+	return testEnv === "demo";
+}
+
+/**
+ * Load .env.<TEST_ENV>. Variables already set (CI secrets) are left alone.
+ * The demo env falls back to the public defaults above.
+ */
 export function loadTestEnv(): string {
 	const testEnv = currentTestEnv();
-	dotenv.config({ path: path.resolve(__dirname, `../.env.${testEnv}`) });
+	dotenv.config({ path: path.resolve(__dirname, `../.env.${testEnv}`), quiet: true });
+	if (isDemoEnv(testEnv)) {
+		for (const [key, value] of Object.entries(DEMO_DEFAULTS)) {
+			process.env[key] ??= value;
+		}
+	}
 	return testEnv;
 }
 
@@ -54,6 +77,12 @@ export function credentials(): E2ECredentials {
 	};
 }
 
+/** True once a username and password are available for the current env. */
+export function credentialsConfigured(): boolean {
+	const { username, password } = credentials();
+	return Boolean(username && password);
+}
+
 export function environment(): E2EEnvironment {
 	return {
 		baseURL: playwrightBaseURL(),
@@ -63,17 +92,13 @@ export function environment(): E2EEnvironment {
 
 /**
  * Site / tenant / workspace for write tests. Comes only from E2E_SITE_NAME.
- * A missing value on a write env fails loudly instead of creating data in the
- * wrong place. Read-only runs do not need it.
+ * Empty unless your app needs one, so the demo suite ignores it.
  */
 export function siteName(): string {
-	const name = (process.env.E2E_SITE_NAME ?? "").trim();
-	if (name) return name;
-	if (isWriteEnv()) {
-		throw new Error(
-			`E2E_SITE_NAME is not set for write env "${currentTestEnv()}". ` +
-				"Set it in .env.<TEST_ENV> before running create/edit/delete tests.",
-		);
-	}
-	return "";
+	return (process.env.E2E_SITE_NAME ?? "").trim();
+}
+
+/** Second demo target: the Playwright TodoMVC sample, which needs no login. */
+export function todoAppURL(): string {
+	return (process.env.TODO_APP_URL ?? DEMO_DEFAULTS.TODO_APP_URL).trim();
 }

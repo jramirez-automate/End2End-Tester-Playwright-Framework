@@ -1,0 +1,30 @@
+---
+description: Evidence must show the thing under test. Always applied.
+alwaysApply: true
+---
+
+When capturing evidence (`EVIDENCE=true`), the feature, row, dialog, toast, or
+record under test **must be clearly visible** in the screenshot and present in
+the proving moment of the video. A passing test whose media shows a blank page,
+a spinner, the wrong scroll position, a closed dialog, or an unrelated screen is
+**invalid evidence**. Fix the capture before publishing anything.
+
+## While writing the spec
+
+Playwright's default end-of-test screenshot is the final viewport, so frame the
+subject deliberately:
+
+1. Scroll it into view (`scrollIntoViewIfNeeded`, or a page-object helper).
+2. Keep the proving UI open. Do not dismiss the dialog or toast that carries the
+   requirement before the capture.
+3. Attach a focused shot when the end state would hide it:
+   `test.info().attach("screenshot", { body: await locator.screenshot(), contentType: "image/png" })`.
+   The evidence reporter puts mid-test attachments first for exactly this reason.
+4. End the test while the subject is still on screen, so the video contains the
+   proof rather than only the setup.
+
+## While verifying
+
+Check the named subject of each requirement is readable in the image and present
+in the video. Wrong viewport or missing subject fails that cell, even when
+Playwright reported a pass.

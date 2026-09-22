@@ -4,9 +4,9 @@ import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 import { isWriteEnv, loadTestEnv, playwrightBaseURL } from "./utils/env";
 
-// TEST_ENV=local|dev|staging|prod selects .env.<TEST_ENV>.
-// HEADED=true shows the browser. EVIDENCE=true keeps screenshot, video, and trace.
-// TICKET=ABC-123 runs only tests tagged @ABC-123.
+// TEST_ENV=demo|local|dev|staging|prod selects .env.<TEST_ENV>.
+// demo is the default and needs no credentials: it targets public sample apps.
+// HEADED=true shows the browser. TICKET=ABC-123 runs only tests tagged @ABC-123.
 // Read-only envs (prod, and staging in CI) run @smoke only.
 
 const testEnv = loadTestEnv();
@@ -21,10 +21,12 @@ const grepParts = [
 const grep = grepParts.length ? new RegExp(grepParts.join("")) : undefined;
 
 const isHeaded = process.env.HEADED === "true";
+const authFile = ".auth/user.json";
+
+// EVIDENCE=true keeps a screenshot, a video, and a trace for every test and
+// writes evidence/<TICKET>/results-<env>.json for the publishing pipeline.
 const wantEvidence = process.env.EVIDENCE === "true";
 const evidenceRoot = ticket ? `evidence/${ticket}` : "evidence";
-const outputDir = wantEvidence ? `${evidenceRoot}/artifacts` : "test-results";
-const includeExamples = process.env.E2E_INCLUDE_EXAMPLES === "1";
 
 function hostMsPlaywrightCache(): string | undefined {
 	const override = process.env.PLAYWRIGHT_HOST_BROWSERS_PATH;
@@ -57,9 +59,11 @@ function hostMsPlaywrightCache(): string | undefined {
 	return fs.existsSync(fallback) ? fallback : undefined;
 }
 
+// Some sandboxed agent shells redirect the browser cache to a throwaway path,
+// which re-downloads Chromium on every run. Prefer the real host cache.
 function preferHostPlaywrightBrowsers(): void {
 	const current = process.env.PLAYWRIGHT_BROWSERS_PATH;
-	if (!current?.includes("cursor-sandbox-cache")) return;
+	if (!current?.includes("sandbox-cache")) return;
 	const host = hostMsPlaywrightCache();
 	if (host) process.env.PLAYWRIGHT_BROWSERS_PATH = host;
 }
@@ -68,10 +72,6 @@ preferHostPlaywrightBrowsers();
 
 export default defineConfig({
 	testDir: "./tests",
-	globalSetup: "./tests/globalSetup.ts",
-	globalTeardown: "./tests/globalTeardown.ts",
-	grep,
-	testIgnore: includeExamples ? [] : [/tests\/example\//],
 	timeout: 90_000,
 	expect: { timeout: 10_000 },
 	globalTimeout:
@@ -82,7 +82,7 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 1,
 	workers: process.env.CI ? 1 : 2,
-	outputDir,
+	outputDir: wantEvidence ? `${evidenceRoot}/artifacts` : "test-results",
 	reporter: [
 		[
 			"html",
@@ -91,13 +91,24 @@ export default defineConfig({
 				open: "never",
 			},
 		],
+		[
+			"allure-playwright",
+			{
+				resultsDir: "allure-results",
+				environmentInfo: {
+					test_env: testEnv,
+					base_url: baseURL,
+					node: process.version,
+				},
+			},
+		],
 		["list"],
 		...(wantEvidence
-			? ([
-					["./evidence-reporter.ts", { outputDir: evidenceRoot, env: testEnv }],
-			  ] as [string, { outputDir: string; env: string }][])
+			? ([["./evidence-reporter.ts", { outputDir: evidenceRoot, env: testEnv }]] as [
+					string,
+					{ outputDir: string; env: string },
+			  ][])
 			: []),
-		...(process.env.PW_PROGRESS_FILE ? ([["./progress-reporter.ts"]] as [string][]) : []),
 	],
 	use: {
 		baseURL,
@@ -115,11 +126,20 @@ export default defineConfig({
 	},
 	projects: [
 		{
+			name: "setup",
+			testMatch: /.*\.setup\.ts/,
+			use: { ...devices["Desktop Chrome"], viewport: { width: 1920, height: 1080 } },
+		},
+		{
 			name: "chromium",
+			dependencies: ["setup"],
+			// The filter lives here, not at the top level, so a TICKET or
+			// @smoke filter never excludes the sign-in step the tests depend on.
+			grep,
 			use: {
 				...devices["Desktop Chrome"],
 				viewport: { width: 1920, height: 1080 },
-				storageState: ".auth/user.json",
+				storageState: authFile,
 			},
 		},
 	],

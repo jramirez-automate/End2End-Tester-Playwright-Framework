@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "comment": "Third-party skills this suite pairs well with. Not vendored here: install them into .agents/skills/ if you want them.",
+  "suggested": {
+    "playwright-best-practices": {
+      "source": "currents-dev/playwright-best-practices-skill",
+      "sourceType": "github"
+    },
+    "playwright-cli": {
+      "source": "microsoft/playwright-cli",
+      "sourceType": "github",
+      "skillPath": "skills/playwright-cli/SKILL.md"
+    },
+    "playwright-generate-test": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/playwright-generate-test/SKILL.md"
+    }
+  }
+}
