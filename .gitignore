@@ -1,0 +1,13 @@
+# Credentials. .env.example is the only env file that belongs in git.
+.env.*
+!.env.example
+
+# Saved login session from tests/globalSetup.ts
+.auth/
+
+node_modules/
+playwright-report/
+test-results/
+
+# Screenshots, video, and traces from EVIDENCE=true. Regenerate when you need them.
+evidence/
