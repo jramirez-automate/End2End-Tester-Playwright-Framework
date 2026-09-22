@@ -1,4 +1,4 @@
-# End-to-end tester
+# End2End Tester Playwright Framework
 
 Playwright starter for a web app. Use this repository as a GitHub template, then point it at your product.
 

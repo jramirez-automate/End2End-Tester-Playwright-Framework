@@ -1,6 +1,6 @@
 # Agent guide
 
-This is a Playwright end-to-end starter. Specs hit a deployed app over HTTP. There is no app source in this repo.
+This is the End2End Tester Playwright Framework. Specs hit a deployed app over HTTP. There is no app source in this repo.
 
 ## Conventions
 

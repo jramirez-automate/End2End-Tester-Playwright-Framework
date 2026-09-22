@@ -1,8 +1,8 @@
 {
-	"name": "e2e-template",
+	"name": "end2end-tester-playwright-framework",
 	"version": "1.0.0",
 	"private": true,
-	"description": "Playwright end-to-end starter: multi-env runs, saved login, page objects, evidence capture.",
+	"description": "End2End Tester Playwright Framework",
 	"engines": {
 		"node": ">=20"
 	},
