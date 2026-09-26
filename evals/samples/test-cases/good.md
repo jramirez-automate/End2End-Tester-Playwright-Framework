@@ -1,0 +1,7 @@
+| tc     | Name                                                   | Steps                                                                                                                                         | Expected result                                   | P  | Type     |
+|--------|--------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------|----|----------|
+| TC-001 | Verify a completed order shows the confirmation        | 1. Sign in 2. Add "Sauce Labs Backpack" to the cart 3. Open the cart 4. Click Checkout 5. Enter first name, last name and postcode "4000", click Continue 6. Click Finish | "Thank you for your order!" is shown              | P1 | Positive |
+| TC-002 | Verify checkout is refused without a postal code       | 1. Sign in 2. Add a product to the cart 3. Open the cart 4. Click Checkout 5. Enter first and last name, leave postal code empty, click Continue | "Error: Postal Code is required" is shown         | P1 | Negative |
+| TC-003 | Verify checkout is refused without a first name        | 1. Sign in 2. Add a product to the cart 3. Open the cart 4. Click Checkout 5. Leave first name empty, enter last name and postcode, click Continue | "Error: First Name is required" is shown          | P2 | Negative |
+
+Open question for PROJ-103: is there a maximum length for the name fields, and what message is shown when it is exceeded?

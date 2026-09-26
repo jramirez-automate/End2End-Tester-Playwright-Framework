@@ -10,5 +10,5 @@
 		"types": ["node"]
 	},
 	"include": ["**/*.ts"],
-	"exclude": ["node_modules", "evidence", "test-results", "playwright-report", ".auth", "templates"]
+	"exclude": ["node_modules", "evidence", "test-results", "playwright-report", ".auth", "templates", "evals"]
 }

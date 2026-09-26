@@ -31,14 +31,19 @@
 		"publish:notify": "node scripts/publish.mjs notify",
 		"publish:cleanup": "node scripts/publish.mjs cleanup",
 		"check:tool-sync": "node scripts/check-tool-sync.mjs",
-		"typecheck": "tsc --noEmit -p tsconfig.json"
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p evals/tsconfig.json",
+		"eval": "vitest run --config evals/vitest.config.mts",
+		"postinstall": "node scripts/fix-deepeval.mjs"
 	},
 	"devDependencies": {
 		"@playwright/test": "1.61.1",
 		"@types/node": "^20.19.43",
 		"allure-commandline": "^2.34.1",
 		"allure-playwright": "~3.11.1",
+		"deepeval": "^0.9.20",
 		"dotenv": "^17.3.1",
-		"typescript": "^5.8.3"
+		"ollama": "^0.6.3",
+		"typescript": "^5.8.3",
+		"vitest": "^4.1.11"
 	}
 }

@@ -186,6 +186,40 @@ Three reporters, all wired in `playwright.config.ts`:
 - **Allure** — results land in `allure-results/`; `npm run allure` generates and opens the report. Good for trends across runs and for CI dashboards. Generating the HTML needs the bundled Allure CLI (`allure-commandline`, which needs Java); the results themselves need neither.
 - **Evidence** — only in evidence mode, described above.
 
+## QA artifact evals
+
+[DeepEval](https://deepeval.com) checks that test cases, bug reports and exploratory debriefs
+follow the conventions in the QA skills (`test-case-design`, `bug-reporting`,
+`exploratory-testing`). It runs on Vitest, separate from the Playwright suite:
+
+```bash
+npm run eval
+```
+
+Each artifact kind has a good and a bad sample in `evals/samples/<kind>/`, and every check must
+pass the good one and fail the bad one — a check that passes both measures nothing. Every run
+prints each score with its reason.
+
+| Check type | Examples | How it's scored | When it runs |
+| --- | --- | --- | --- |
+| **pattern** | `TC-###` ids, names start with **Verify**, `Environment:` block first, no file paths or selectors | Regular expression (`PatternMatchMetric`) — instant, free, exact | Always |
+| **judge** | All criteria covered, nothing invented, summary says what and where, concrete follow-ups | An LLM judge answering one yes/no question (`GEval`) | Only when a judge is set in `.env.eval` |
+
+Choose the judge in a gitignored `.env.eval` (options in `.env.example`):
+
+- **Ollama** (local, free): install [Ollama](https://ollama.com), `ollama serve`,
+  `ollama pull qwen2.5:7b`, then `EVAL_JUDGE=ollama`. Use a 7B model or larger — a 3B model
+  misreads the artifacts and scores nearly everything 0.
+- **Grok** (xAI API): `EVAL_JUDGE=grok` and `GROK_API_KEY`.
+
+With no judge configured the judgment checks are skipped, not failed, so a fresh clone and CI
+stay green. DeepEval's anonymous telemetry is turned off (`DEEPEVAL_TELEMETRY_OPT_OUT`).
+
+> **Known DeepEval packaging bug.** The npm package (through at least 0.9.20) ships a stale
+> `dist/telemetry.js` that shadows `dist/telemetry/`, so every metric throws
+> `inComponentScope is not a function`. `postinstall` (`scripts/fix-deepeval.mjs`) deletes the
+> stale file; remove that step once upstream fixes it.
+
 ## What the sample suite proves
 
 The demo specs exist so the framework is runnable and reviewable before it is pointed at anything private. Each one demonstrates a capability you will reuse:
