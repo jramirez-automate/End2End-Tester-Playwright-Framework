@@ -63,6 +63,48 @@ Build reliable, fast, and maintainable end-to-end test suites that provide confi
 
 Detailed pattern documentation lives in `references/details.md`. Read that file when the navigation tier above is insufficient.
 
+## Readable steps (for manual QA)
+
+The HTML report, trace viewer, Allure and failure messages all show
+`test.step()` titles, so steps are how a manual QA engineer follows a test
+without reading code. Write every test as `test.step()` blocks, not comments:
+
+- One step per user action or check, titled `GIVEN …` / `WHEN …` / `THEN …` /
+  `AND …` in plain English — the same wording as the manual test case
+  (Zephyr / Confluence / ticket steps) when one exists.
+- Name the screen, button and real values: `WHEN the shopper checks out with postcode "4000"`,
+  `THEN the page shows "Thank you for your order!"` — never "click button" or
+  "check element".
+- Steps call page-object methods; raw locators still live in page objects.
+- Pass data between steps by returning it:
+  `const name = await test.step("GIVEN a unique order name", () => e2eName("Order"));`
+- Keep each `expect` inside the THEN / AND step it proves, and take any
+  evidence screenshot (`test.info().attach("screenshot", …)`) in that same step
+  so the proof sits under the criterion in the report.
+- Register teardown (`cleanup.add(…)`) inside the step that creates the data;
+  `afterEach` cleanup and `try` / `finally` stay outside the steps.
+
+```typescript
+test("a cart can be checked out to a confirmation", async ({ page }) => {
+	await test.step(`GIVEN "${BACKPACK}" is in the cart`, async () => {
+		await inventory.open();
+		await inventory.addToCart(BACKPACK);
+	});
+
+	await test.step("WHEN the shopper checks out and confirms the order", async () => {
+		await inventory.openCart();
+		await cart.checkout();
+		await checkout.fillDetails(shopper);
+		await checkout.continue();
+		await checkout.finish();
+	});
+
+	await test.step('THEN the page shows "Thank you for your order!"', async () => {
+		await expect(checkout.confirmation).toHaveText(/thank you for your order/i);
+	});
+});
+```
+
 ## Best Practices
 
 1. **Use Data Attributes**: `data-testid` or `data-cy` for stable selectors

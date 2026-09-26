@@ -23,12 +23,17 @@ test.describe("Cart and checkout", { tag: "@DEMO-001" }, () => {
 
 	test("adding products updates the cart badge", async ({ page }) => {
 		const inventory = new InventoryPage(page);
-		await inventory.open();
 
-		await inventory.addToCart(BACKPACK);
-		await inventory.addToCart(BIKE_LIGHT);
+		await test.step("GIVEN the shopper is on the products page", () => inventory.open());
 
-		await expect(inventory.cartBadge).toHaveText("2");
+		await test.step(`WHEN the shopper adds "${BACKPACK}" and "${BIKE_LIGHT}" to the cart`, async () => {
+			await inventory.addToCart(BACKPACK);
+			await inventory.addToCart(BIKE_LIGHT);
+		});
+
+		await test.step("THEN the cart badge shows 2", async () => {
+			await expect(inventory.cartBadge).toHaveText("2");
+		});
 	});
 
 	test("a cart can be checked out to a confirmation", async ({ page }) => {
@@ -36,23 +41,35 @@ test.describe("Cart and checkout", { tag: "@DEMO-001" }, () => {
 		const cart = new CartPage(page);
 		const checkout = new CheckoutPage(page);
 
-		await inventory.open();
-		await inventory.addToCart(BACKPACK);
-		await inventory.openCart();
-
-		await expect(cart.item(BACKPACK)).toBeVisible();
-		await cart.checkout();
-
-		await checkout.fillDetails({
-			firstName: "Ada",
-			lastName: "Lovelace",
-			postalCode: "2000",
+		await test.step(`GIVEN the shopper adds "${BACKPACK}" to the cart`, async () => {
+			await inventory.open();
+			await inventory.addToCart(BACKPACK);
 		});
-		await checkout.continue();
-		await expect(checkout.total).toContainText(/total/i);
-		await checkout.finish();
 
-		await expect(checkout.confirmation).toHaveText(/thank you for your order/i);
+		await test.step(`WHEN the shopper opens the cart, "${BACKPACK}" is listed`, async () => {
+			await inventory.openCart();
+			await expect(cart.item(BACKPACK)).toBeVisible();
+		});
+
+		await test.step('AND checks out as "Ada Lovelace" with postcode "2000"', async () => {
+			await cart.checkout();
+			await checkout.fillDetails({
+				firstName: "Ada",
+				lastName: "Lovelace",
+				postalCode: "2000",
+			});
+			await checkout.continue();
+		});
+
+		await test.step("AND the order overview shows a total", async () => {
+			await expect(checkout.total).toContainText(/total/i);
+		});
+
+		await test.step("AND confirms the order with Finish", () => checkout.finish());
+
+		await test.step('THEN the page shows "Thank you for your order!"', async () => {
+			await expect(checkout.confirmation).toHaveText(/thank you for your order/i);
+		});
 	});
 
 	test("checkout rejects missing details", async ({ page }) => {
@@ -60,13 +77,17 @@ test.describe("Cart and checkout", { tag: "@DEMO-001" }, () => {
 		const cart = new CartPage(page);
 		const checkout = new CheckoutPage(page);
 
-		await inventory.open();
-		await inventory.addToCart(BACKPACK);
-		await inventory.openCart();
-		await cart.checkout();
+		await test.step(`GIVEN the shopper has "${BACKPACK}" in the cart and starts checkout`, async () => {
+			await inventory.open();
+			await inventory.addToCart(BACKPACK);
+			await inventory.openCart();
+			await cart.checkout();
+		});
 
-		await checkout.continue();
+		await test.step("WHEN the shopper continues without filling in any details", () => checkout.continue());
 
-		await expect(checkout.errorMessage).toContainText(/first name is required/i);
+		await test.step('THEN the error "First Name is required" is shown', async () => {
+			await expect(checkout.errorMessage).toContainText(/first name is required/i);
+		});
 	});
 });
