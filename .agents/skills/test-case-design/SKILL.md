@@ -84,12 +84,14 @@ see that the edges were deliberate.
 ## In this repo
 
 - The table is the numbered checklist `/e2e-ticket` step 1 asks for — put it
-  on the ticket before any spec is written. To create the cases in test
-  management up front, also write it as `src/evidence/<KEY>/test-cases.json`
-  (`templates/test-cases.example.json`) and run
-  `node scripts/publish.mjs cases --ticket <KEY> --dry-run`, then without
-  `--dry-run`. Each case's `test` field is the Playwright test title, filled in
-  once the spec exists; `mark-pass` uses it to record the run against the case.
+  on the ticket before any spec is written, and write it as
+  `src/evidence/<KEY>/test-cases.json` (`templates/test-cases.example.json`).
+  Each case's `test` field is the Playwright test title, filled in once the
+  spec passes (`cases` checks it against the run's results); mark a case that
+  stays manual `"manual": true`. Only then run
+  `node scripts/publish.mjs cases --ticket <KEY> --dry-run`, and create the
+  cases with `--create-cases` after the user approves the list: Zephyr cannot
+  delete a case. `mark-pass` uses `test` to record the run against the case.
 - Each automated case becomes one test: the title is the case name without
   "Verify", and its `test.step()` titles follow the case's steps
   (`e2e-testing-patterns` → Readable steps; `api-testing` for API cases).

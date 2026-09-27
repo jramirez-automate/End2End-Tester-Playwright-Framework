@@ -105,8 +105,8 @@ export function failedMedia(ticket, row) {
 }
 
 /**
- * The test-case plan: written from the ticket's criteria before any spec
- * exists (see templates/test-cases.example.json). Cases, not results.
+ * The test-case plan: drafted from the ticket's criteria, then linked to each
+ * spec's title (see templates/test-cases.example.json). Cases, not results.
  */
 export function planFile(ticket, override) {
 	return override ?? path.join(bundleDir(ticket), "test-cases.json");
@@ -144,6 +144,21 @@ export function readZephyrState(ticket) {
 export function writeZephyrState(ticket, state) {
 	fs.mkdirSync(bundleDir(ticket), { recursive: true });
 	fs.writeFileSync(zephyrStateFile(ticket), `${JSON.stringify(state, null, 2)}\n`);
+}
+
+/** What `cycles` created, so a second publish does not create the same cases again. */
+export function cyclesStateFile(ticket) {
+	return path.join(bundleDir(ticket), "zephyr-cycles.json");
+}
+
+export function readCyclesState(ticket) {
+	const file = cyclesStateFile(ticket);
+	return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : undefined;
+}
+
+export function writeCyclesState(ticket, state) {
+	fs.mkdirSync(bundleDir(ticket), { recursive: true });
+	fs.writeFileSync(cyclesStateFile(ticket), `${JSON.stringify(state, null, 2)}\n`);
 }
 
 export function overallStatus(rows) {
