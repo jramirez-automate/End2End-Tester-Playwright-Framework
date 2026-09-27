@@ -27,9 +27,7 @@ export function createJudge(): DeepEvalBaseLLM {
 		case "grok":
 			return new GrokModel({ model: modelName, temperature: 0 });
 		default:
-			throw new Error(
-				`No usable EVAL_JUDGE ("${provider}") — use "ollama" or "grok".`,
-			);
+			throw new Error(`No usable EVAL_JUDGE ("${provider}") — use "ollama" or "grok".`);
 	}
 }
 
@@ -55,9 +53,7 @@ export async function judgeUnavailableReason(): Promise<string | undefined> {
 		const { models = [] } = (await res.json()) as {
 			models?: { name: string }[];
 		};
-		const pulled = models.some(
-			(m) => m.name === wanted || m.name === `${wanted}:latest`,
-		);
+		const pulled = models.some((m) => m.name === wanted || m.name === `${wanted}:latest`);
 		return pulled
 			? undefined
 			: `Ollama is running but "${wanted}" is not pulled (ollama pull ${wanted})`;

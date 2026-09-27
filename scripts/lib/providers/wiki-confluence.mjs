@@ -1,33 +1,80 @@
+import fs from "node:fs";
+
 import { config, jiraAuthHeader } from "../config.mjs";
 import { expectOk, log } from "../logger.mjs";
 
-/** Publishes the test plan page and keeps it updated in place. */
-const headers = () => ({
-	Authorization: jiraAuthHeader(),
-	Accept: "application/json",
-	"Content-Type": "application/json",
-});
+/**
+ * Publishes the test plan page and keeps it updated in place, with each case's
+ * media uploaded to the page and embedded in its results cell.
+ *
+ * Every upload carries UPLOAD_MARK as its attachment comment. `prune` only
+ * ever deletes attachments bearing that mark, so a diagram or spreadsheet
+ * someone attached to the page by hand is never touched.
+ */
+const UPLOAD_MARK = "Uploaded by the e2e publish pipeline";
+
+const auth = () => ({ Authorization: jiraAuthHeader(), Accept: "application/json" });
+const headers = () => ({ ...auth(), "Content-Type": "application/json" });
 
 const wiki = () => `${config.confluence.baseUrl}/wiki`;
 
-async function findByTitle(title) {
-	const url = `${wiki()}/api/v2/pages?space-id=${config.confluence.spaceId}&title=${encodeURIComponent(title)}&status=current`;
+const escape = (value) =>
+	String(value)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;");
+
+async function findByTitle(title, target) {
+	const url = `${wiki()}/api/v2/pages?space-id=${target.spaceId}&title=${encodeURIComponent(title)}&status=current`;
 	const res = await fetch(url, { headers: headers() });
 	await expectOk(res, "Search pages");
 	const data = await res.json();
 	return data.results?.[0];
 }
 
+async function readPage(pageId) {
+	const res = await fetch(`${wiki()}/api/v2/pages/${pageId}`, { headers: headers() });
+	await expectOk(res, `Read page ${pageId}`);
+	return res.json();
+}
+
+/** The page to update: the pinned id when given, otherwise the plan's title in the target space. */
+export async function resolvePage({ title, target, pageId }) {
+	if (pageId) return readPage(pageId);
+	return findByTitle(title, target);
+}
+
+function embed(name) {
+	const attachment = `<ri:attachment ri:filename="${escape(name)}"/>`;
+	if (/\.(png|jpe?g)$/i.test(name)) {
+		return `<p><ac:image ac:height="180">${attachment}</ac:image></p>`;
+	}
+	if (/\.webm$/i.test(name)) {
+		return (
+			`<ac:structured-macro ac:name="multimedia">` +
+			`<ac:parameter ac:name="width">320</ac:parameter>` +
+			`<ac:parameter ac:name="name">${attachment}</ac:parameter>` +
+			`</ac:structured-macro>`
+		);
+	}
+	return `<p><ac:link>${attachment}</ac:link></p>`;
+}
+
 export function buildStorage({ ticket, summary, environments, rows, status, links }) {
-	const escape = (value) =>
-		String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 	const header = ["TC", "Case", ...environments]
 		.map((label) => `<th>${escape(label)}</th>`)
 		.join("");
 	const body = rows
 		.map((row) => {
 			const cells = environments
-				.map((env) => `<td>${escape(row.results[env]?.status ?? "—")}</td>`)
+				.map((env) => {
+					const result = row.results[env];
+					if (!result) return "<td>—</td>";
+					const media = (result.media ?? []).map(embed).join("");
+					const error = result.error ? `<p><em>${escape(result.error)}</em></p>` : "";
+					return `<td><p>${escape(result.status)}</p>${media}${error}</td>`;
+				})
 				.join("");
 			return `<tr><td>${escape(row.tc)}</td><td>${escape(row.title)}</td>${cells}</tr>`;
 		})
@@ -47,28 +94,31 @@ export function buildStorage({ ticket, summary, environments, rows, status, link
 	].join("");
 }
 
-export async function publishPage({ title, storage }, { dryRun }) {
+export async function publishPage({ title, storage, target, pageId }, { dryRun }) {
 	if (dryRun) {
-		log.plan(`publish wiki page "${title}" (${storage.length} chars of storage format)`);
+		const where = pageId
+			? `page ${pageId}`
+			: `space ${target.spaceKey || target.spaceId || "?"} (${target.name})`;
+		log.plan(
+			`publish wiki page "${title}" to ${where} (${storage.length} chars of storage format)`,
+		);
 		return { id: "dry-run", title, _links: {} };
 	}
 
-	const existing = await findByTitle(title);
-	const payload = {
-		spaceId: config.confluence.spaceId,
-		status: "current",
-		title,
-		body: { representation: "storage", value: storage },
-		...(config.confluence.parentPageId ? { parentId: config.confluence.parentPageId } : {}),
-	};
+	const existing = await resolvePage({ title, target, pageId });
+	const body = { representation: "storage", value: storage };
 
 	if (existing) {
+		// parentId is left out on update: sending it would move a page someone
+		// deliberately filed elsewhere back under the configured parent.
 		const res = await fetch(`${wiki()}/api/v2/pages/${existing.id}`, {
 			method: "PUT",
 			headers: headers(),
 			body: JSON.stringify({
 				id: existing.id,
-				...payload,
+				status: "current",
+				title,
+				body,
 				version: { number: (existing.version?.number ?? 1) + 1, message: "Updated by e2e suite" },
 			}),
 		});
@@ -76,17 +126,88 @@ export async function publishPage({ title, storage }, { dryRun }) {
 		return res.json();
 	}
 
+	if (pageId) throw new Error(`CONFLUENCE_PAGE_ID ${pageId} was not found`);
 	const res = await fetch(`${wiki()}/api/v2/pages`, {
 		method: "POST",
 		headers: headers(),
-		body: JSON.stringify(payload),
+		body: JSON.stringify({
+			spaceId: target.spaceId,
+			status: "current",
+			title,
+			body,
+			...(target.parentPageId ? { parentId: target.parentPageId } : {}),
+		}),
 	});
 	await expectOk(res, "Create page");
 	return res.json();
 }
 
-export function pageUrl(page) {
+export async function listAttachments(pageId) {
+	const found = [];
+	let next = `${wiki()}/api/v2/pages/${pageId}/attachments?limit=250`;
+	while (next) {
+		const res = await fetch(next, { headers: headers() });
+		await expectOk(res, `List attachments on page ${pageId}`);
+		const data = await res.json();
+		found.push(...(data.results ?? []));
+		next = data._links?.next ? `${config.confluence.baseUrl}${data._links.next}` : "";
+	}
+	return found;
+}
+
+/**
+ * Upload media to the page. A file with the same name becomes a new version of
+ * that attachment, so a recapture replaces the old screenshot rather than
+ * sitting beside it.
+ */
+export async function uploadMedia(pageId, files, { dryRun }) {
+	if (dryRun) {
+		files.forEach((entry) => log.plan(`upload ${entry.name} → wiki page`));
+		return;
+	}
+	for (const entry of files) {
+		const form = new FormData();
+		form.append("file", new Blob([fs.readFileSync(entry.file)]), entry.name);
+		form.append("comment", UPLOAD_MARK);
+		form.append("minorEdit", "true");
+		const res = await fetch(`${wiki()}/rest/api/content/${pageId}/child/attachment`, {
+			method: "PUT",
+			headers: { ...auth(), "X-Atlassian-Token": "no-check" },
+			body: form,
+		});
+		await expectOk(res, `Upload ${entry.name}`);
+		log.ok(`uploaded ${entry.name}`);
+	}
+}
+
+/** Delete page attachments this pipeline uploaded that the current table no longer references. */
+export async function prune(pageId, { dryRun, keepNames }) {
+	const deleted = [];
+	const guarded = [];
+	for (const attachment of await listAttachments(pageId)) {
+		if (keepNames.includes(attachment.title)) continue;
+		if (attachment.comment !== UPLOAD_MARK) {
+			guarded.push(`${attachment.title} (not uploaded by this pipeline)`);
+			continue;
+		}
+		if (dryRun) {
+			log.plan(`delete page attachment ${attachment.title}`);
+			deleted.push(attachment.title);
+			continue;
+		}
+		const res = await fetch(`${wiki()}/api/v2/attachments/${attachment.id}`, {
+			method: "DELETE",
+			headers: headers(),
+		});
+		await expectOk(res, `Delete ${attachment.title}`);
+		deleted.push(attachment.title);
+	}
+	guarded.forEach((entry) => log.warn(`kept ${entry}`));
+	return { deleted, guarded };
+}
+
+export function pageUrl(page, target) {
 	if (page?.id === "dry-run") return "(dry run)";
 	const relative = page?._links?.webui ?? "";
-	return relative ? `${wiki()}${relative}` : `${wiki()}/spaces/${config.confluence.spaceKey}`;
+	return relative ? `${wiki()}${relative}` : `${wiki()}/spaces/${target?.spaceKey ?? ""}`;
 }

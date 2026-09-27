@@ -1,0 +1,16 @@
+node_modules
+src/test-results
+src/evidence
+playwright-report
+allure-report
+allure-results
+package-lock.json
+*.md
+*.mdc
+.cursor
+.claude
+.agents
+.auth
+*.html
+docs/allure-history.jsonl
+evals/samples

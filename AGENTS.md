@@ -9,15 +9,19 @@ credentials, so a fresh clone runs green.
 
 ## Conventions
 
-- Import `test` and `expect` from `fixtures.ts`.
-- Specs live in `tests/<feature>/`. Trace a ticket with a tag: `{ tag: "@ABC-123" }`.
-- Selectors live in page objects under `pages/`. Prefer `getByRole` and
+- Import `test` and `expect` from `src/fixtures.ts`.
+- Specs live in `src/tests/<feature>/`. Trace a ticket with a tag: `{ tag: "@ABC-123" }`.
+- Selectors live in page objects under `src/pages/`. Prefer `getByRole` and
   `getByLabel`; scope a dialog with `getByRole("dialog")`. Put `.first()` on an
   `.or()` composition, not on each side.
-- Write flows run on write environments only (`WRITE_ENVS` in `utils/env.ts`).
+- Write flows run on write environments only (`WRITE_ENVS` in `src/utils/env.ts`).
   Production is `@smoke`. Never edit that guard to make a run possible.
 - Name created data with `e2eName()` and delete it in `test.afterEach` through
   `CleanupRegistry`.
+- API specs are `src/tests/<feature>/<name>.api.spec.ts`, beside the feature's UI
+  spec. Call the API through the `api` / `anonApi` fixtures, never the built-in
+  `request` fixture, and read bodies with `readBody()` so each case carries its
+  response as evidence. Details: the `api-testing` skill.
 - Author one test at a time. Run it alone. The failure that counts is the
   assertion of user-visible behaviour, not a setup error.
 - Check `docs/APP-MAP.md` before adding a route or a widget helper, and record
@@ -29,13 +33,18 @@ credentials, so a fresh clone runs green.
 
 ```bash
 npm test                                            # demo suite, no credentials
-TEST_ENV=dev npx playwright test tests/<f>/<x>.spec.ts -g "<title>"
+TEST_ENV=dev npx playwright test src/tests/<f>/<x>.spec.ts -g "<title>"
 TEST_ENV=dev npx playwright test <spec> --retries=0 --trace=retain-on-failure  # debug loop
 TICKET=ABC-123 TEST_ENV=dev npx playwright test     # one ticket's tag
 TICKET=ABC-123 EVIDENCE=true npx playwright test    # evidence bundle
 node scripts/publish.mjs all --ticket ABC-123 --dry-run
 npm run typecheck && npm run check:tool-sync
+npm run lint && npm run format:check && npm run scan:secrets
 ```
+
+The pre-commit hook (`.husky/pre-commit`) scans staged files for secrets, then
+lints and formats them. Never bypass it with `--no-verify`; fix the finding or
+the pattern in `scripts/scan-secrets.js`.
 
 **Ask before running against a shared or production environment.** Demo and local
 need no approval.

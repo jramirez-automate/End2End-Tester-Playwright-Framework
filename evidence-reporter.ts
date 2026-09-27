@@ -1,14 +1,9 @@
 import fs from "fs";
 import path from "path";
-import type {
-	FullResult,
-	Reporter,
-	TestCase,
-	TestResult,
-} from "@playwright/test/reporter";
+import type { FullResult, Reporter, TestCase, TestResult } from "@playwright/test/reporter";
 
 interface EvidenceReporterOptions {
-	/** Root folder for this run, for example evidence/ABC-123. */
+	/** Root folder for this run, for example src/evidence/ABC-123. */
 	outputDir?: string;
 	/** Environment name, appended to every artifact so two runs can coexist. */
 	env?: string;
@@ -39,7 +34,7 @@ class EvidenceReporter implements Reporter {
 	private entries: { test: TestCase; result: TestResult }[] = [];
 
 	constructor(options: EvidenceReporterOptions = {}) {
-		this.outputDir = options.outputDir ?? "evidence";
+		this.outputDir = options.outputDir ?? "src/evidence";
 		this.env = options.env ?? process.env.TEST_ENV ?? "";
 	}
 
@@ -61,16 +56,12 @@ class EvidenceReporter implements Reporter {
 		this.entries.forEach(({ test, result }, index) => {
 			const skipped = result.status === "skipped";
 			const failed = !skipped && result.status !== "passed";
-			const base = uniqueName(
-				`${slug(test.title)}${envSuffix}${failed ? "-FAILED" : ""}`,
-				used,
-			);
+			const base = uniqueName(`${slug(test.title)}${envSuffix}${failed ? "-FAILED" : ""}`, used);
 			const media: string[] = [];
 
 			const screenshots: { fromBody: boolean; ext: string; path?: string; body?: Buffer }[] = [];
 			for (const attachment of result.attachments) {
-				const fromBody =
-					!attachment.path && attachment.body != null && attachment.body.length > 0;
+				const fromBody = !attachment.path && (attachment.body?.length ?? 0) > 0;
 				const fromPath = !!attachment.path && fs.existsSync(attachment.path);
 				if (!fromBody && !fromPath) continue;
 
@@ -89,6 +80,17 @@ class EvidenceReporter implements Reporter {
 						path: fromPath ? attachment.path : undefined,
 						body: fromBody ? Buffer.from(attachment.body as Buffer) : undefined,
 					});
+					continue;
+				}
+
+				// API cases have no screen: the recorded response is their proof.
+				if (attachment.contentType === "application/json") {
+					const n = media.filter((entry) => entry.includes("-response")).length;
+					const name = `${base}-response${n ? `-${n + 1}` : ""}.json`;
+					const dest = path.join(this.outputDir, name);
+					if (fromPath) fs.copyFileSync(attachment.path!, dest);
+					else fs.writeFileSync(dest, attachment.body!);
+					media.push(name);
 					continue;
 				}
 
@@ -125,9 +127,7 @@ class EvidenceReporter implements Reporter {
 				status: skipped ? "Skipped" : failed ? "Fail" : "Pass",
 				durationMs: result.duration,
 				media,
-				...(failed && result.error?.message
-					? { error: firstLine(result.error.message) }
-					: {}),
+				...(failed && result.error?.message ? { error: firstLine(result.error.message) } : {}),
 			});
 		});
 
@@ -170,7 +170,10 @@ function uniqueName(base: string, used: Set<string>): string {
 }
 
 function firstLine(message: string): string {
-	return message.replace(/\u001b\[[0-9;]*m/g, "").split("\n")[0].slice(0, 300);
+	return message
+		.replace(/\u001b\[[0-9;]*m/g, "")
+		.split("\n")[0]
+		.slice(0, 300);
 }
 
 export default EvidenceReporter;

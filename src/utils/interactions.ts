@@ -27,10 +27,7 @@ export interface CollectedPageErrors {
  * Record console errors and HTTP responses at or above minStatus (default 400).
  * Call this before the action under test.
  */
-export function collectPageErrors(
-	page: Page,
-	opts?: { minStatus?: number },
-): CollectedPageErrors {
+export function collectPageErrors(page: Page, opts?: { minStatus?: number }): CollectedPageErrors {
 	const consoleErrors: string[] = [];
 	const failedResponses: string[] = [];
 	const minStatus = opts?.minStatus ?? 400;

@@ -18,19 +18,33 @@
 		"test:ui": "playwright test --ui",
 		"test:debug": "playwright test --debug",
 		"report": "playwright show-report",
-		"allure:generate": "allure generate allure-results --clean -o allure-report",
-		"allure:open": "allure open allure-report",
-		"allure": "npm run allure:generate && npm run allure:open",
+		"report:allure": "npm run report:allure:generate && allure open allure-report --port 8080",
+		"report:allure:generate": "allure generate allure-results --output allure-report",
+		"report:allure:gate": "allure quality-gate allure-results",
+		"allure:clean": "node -e \"for (const d of ['allure-results', 'allure-report']) require('fs').rmSync(d, { recursive: true, force: true })\"",
 		"publish": "node scripts/publish.mjs",
 		"publish:dry": "node scripts/publish.mjs all --dry-run",
 		"publish:summary": "node scripts/publish.mjs summary",
 		"publish:attach": "node scripts/publish.mjs attach",
 		"publish:comment": "node scripts/publish.mjs comment",
 		"publish:plan": "node scripts/publish.mjs plan",
+		"publish:cases": "node scripts/publish.mjs cases",
+		"publish:mark-pass": "node scripts/publish.mjs mark-pass",
 		"publish:cycles": "node scripts/publish.mjs cycles",
 		"publish:notify": "node scripts/publish.mjs notify",
 		"publish:cleanup": "node scripts/publish.mjs cleanup",
+		"publish:prune": "node scripts/publish.mjs prune",
+		"publish:bug": "node scripts/publish.mjs bug",
 		"check:tool-sync": "node scripts/check-tool-sync.mjs",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"format": "prettier --write \"**/*.{ts,mts,mjs,js,json,yml}\"",
+		"format:check": "prettier --check \"**/*.{ts,mts,mjs,js,json,yml}\"",
+		"scan:secrets": "node scripts/scan-secrets.js",
+		"scan:secrets:staged": "node scripts/scan-secrets.js --staged",
+		"scan:secrets:self-test": "node scripts/scan-secrets.js --self-test",
+		"prepare": "husky",
+		"app-source": "node scripts/app-source.mjs",
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p evals/tsconfig.json",
 		"eval": "vitest run --config evals/vitest.config.mts",
 		"postinstall": "node scripts/fix-deepeval.mjs"
@@ -38,12 +52,29 @@
 	"devDependencies": {
 		"@playwright/test": "1.61.1",
 		"@types/node": "^20.19.43",
-		"allure-commandline": "^2.34.1",
+		"@typescript-eslint/eslint-plugin": "^8.70.1",
+		"@typescript-eslint/parser": "^8.70.1",
+		"allure": "^3.18.0",
 		"allure-playwright": "~3.11.1",
 		"deepeval": "^0.9.20",
 		"dotenv": "^17.3.1",
+		"eslint": "^9.39.5",
+		"eslint-plugin-playwright": "^2.12.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^15.5.2",
 		"ollama": "^0.6.3",
+		"prettier": "^3.9.9",
 		"typescript": "^5.8.3",
-		"vitest": "^4.1.11"
+		"vitest": "^4.1.11",
+		"zod": "^4.6.5"
+	},
+	"lint-staged": {
+		"*.{ts,mts,mjs}": [
+			"eslint --fix --no-warn-ignored",
+			"prettier --write"
+		],
+		"*.{js,json,yml}": [
+			"prettier --write"
+		]
 	}
 }

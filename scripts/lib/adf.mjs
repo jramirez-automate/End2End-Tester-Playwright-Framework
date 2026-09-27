@@ -4,7 +4,11 @@
  * Inline, playable media in a comment is only possible with ADF media nodes.
  * A markdown comment can link to an attachment, never embed it.
  */
-export const text = (value, marks) => ({ type: "text", text: String(value), ...(marks ? { marks } : {}) });
+export const text = (value, marks) => ({
+	type: "text",
+	text: String(value),
+	...(marks ? { marks } : {}),
+});
 export const strong = (value) => text(value, [{ type: "strong" }]);
 export const link = (value, href) => text(value, [{ type: "link", attrs: { href } }]);
 
@@ -45,4 +49,18 @@ export const mediaSingle = (id, width = 760) => ({
 	],
 });
 
-export const doc = (content) => ({ type: "doc", version: 1, content: content.flat().filter(Boolean) });
+/** A non-image attachment (e.g. an API response) rendered as a file card. */
+export const mediaFile = (id) => ({
+	type: "mediaGroup",
+	content: [{ type: "media", attrs: { type: "file", id, collection: "" } }],
+});
+
+/** Images and videos play inline; anything else becomes a file card. */
+export const mediaFor = (name, id) =>
+	/\.(png|jpe?g|gif|webm|mp4)$/i.test(name) ? mediaSingle(id) : mediaFile(id);
+
+export const doc = (content) => ({
+	type: "doc",
+	version: 1,
+	content: content.flat().filter(Boolean),
+});

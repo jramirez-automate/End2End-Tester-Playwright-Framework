@@ -37,10 +37,7 @@ export const rubrics: Record<string, Check[]> = {
 			name: "TC ids",
 			type: "pattern",
 			// At least one TC-###, and no TC1 / TC-1 / TC-0001 style ids.
-			pattern: both(
-				contains("\\bTC-\\d{3}\\b"),
-				lacks("\\bTC(?!-\\d{3}\\b)-?\\d"),
-			),
+			pattern: both(contains("\\bTC-\\d{3}\\b"), lacks("\\bTC(?!-\\d{3}\\b)-?\\d")),
 		},
 		{
 			name: "Verify names",
@@ -51,9 +48,7 @@ export const rubrics: Record<string, Check[]> = {
 		{
 			name: "User-action steps",
 			type: "pattern",
-			pattern: lacks(
-				"\\bawait\\b|getBy\\w+\\(|=>|\\w\\(\\)|\\.spec\\.ts|\\bsrc/",
-			),
+			pattern: lacks("\\bawait\\b|getBy\\w+\\(|=>|\\w\\(\\)|\\.spec\\.ts|\\bsrc/"),
 		},
 		{
 			name: "One expected result",
@@ -103,44 +98,29 @@ export const rubrics: Record<string, Check[]> = {
 		{
 			name: "Severity and priority",
 			type: "pattern",
-			pattern: contains(
-				"Severity:\\s*(?:Critical|High|Medium|Low)\\b",
-				"Priority:\\s*\\w",
-			),
+			pattern: contains("Severity:\\s*(?:Critical|High|Medium|Low)\\b", "Priority:\\s*\\w"),
 		},
 		{
 			name: "No code references",
 			type: "pattern",
-			pattern: lacks(
-				"\\.(?:ts|tsx|js|jsx|py)\\b|\\bline \\d+|getBy\\w+\\(|\\w\\(\\)",
-			),
+			pattern: lacks("\\.(?:ts|tsx|js|jsx|py)\\b|\\bline \\d+|getBy\\w+\\(|\\w\\(\\)"),
 		},
 	],
 	"session-debrief": [
 		{
 			name: "Five sections",
 			type: "pattern",
-			pattern: contains(
-				"Covered:",
-				"Found:",
-				"Blocked by:",
-				"Still open:",
-				"Risk call:",
-			),
+			pattern: contains("Covered:", "Found:", "Blocked by:", "Still open:", "Risk call:"),
 		},
 		{
 			name: "Bugs with ids",
 			type: "pattern",
-			pattern: contains(
-				"Found:[\\s\\S]*?(?:\\b[A-Z][A-Z0-9]+-\\d+\\b|\\bnone\\b)",
-			),
+			pattern: contains("Found:[\\s\\S]*?(?:\\b[A-Z][A-Z0-9]+-\\d+\\b|\\bnone\\b)"),
 		},
 		{
 			name: "Risk call",
 			type: "pattern",
-			pattern: contains(
-				"Risk call:\\s*\\n?\\s*(?:Ship with known issues|Ship|Hold)\\b",
-			),
+			pattern: contains("Risk call:\\s*\\n?\\s*(?:Ship with known issues|Ship|Hold)\\b"),
 		},
 		{
 			name: "Mission, env, duration",

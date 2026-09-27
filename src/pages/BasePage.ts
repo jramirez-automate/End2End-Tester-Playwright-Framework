@@ -54,5 +54,7 @@ export function escapeRegex(value: string): string {
 }
 
 export async function expectVisibleHeading(page: Page, name: string): Promise<void> {
-	await expect(page.getByRole("heading", { name: new RegExp(escapeRegex(name), "i") }).first()).toBeVisible();
+	await expect(
+		page.getByRole("heading", { name: new RegExp(escapeRegex(name), "i") }).first(),
+	).toBeVisible();
 }

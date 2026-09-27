@@ -88,18 +88,18 @@ would catch it coming back, add a case (`test-case-design`) and automate it.
 
 ## In this repo
 
-1. Create the bug in the configured tracker (`.env.publish`: Jira or GitHub),
-   linked to the ticket under test.
-2. Attach the failure media to the bug and embed it in a comment:
+1. Create the bug in the configured tracker (`.env.publish`: Jira or GitHub).
+2. Give it its own proof. One command copies the failed case's `*-FAILED.png`
+   and `*-FAILED.webm` into `src/evidence/<BUG-KEY>/`, attaches them, embeds them in
+   the bug's description under an **Evidence** heading, and links the bug to
+   the ticket under test:
    ```
-   mkdir -p evidence/<BUG-KEY>
-   cp evidence/<KEY>/*<case>*-FAILED.png evidence/<KEY>/*<case>*-FAILED.webm evidence/<BUG-KEY>/
-   node scripts/publish.mjs attach --ticket <BUG-KEY> --dry-run
-   node scripts/publish.mjs attach --ticket <BUG-KEY>
-   node scripts/publish.mjs comment --ticket <BUG-KEY>
+   node scripts/publish.mjs bug --ticket <BUG-KEY> --from <KEY> --tc <TC-00N> --dry-run
+   node scripts/publish.mjs bug --ticket <BUG-KEY> --from <KEY> --tc <TC-00N>
    ```
-   A manual finding's screenshot or recording goes into
-   `evidence/<BUG-KEY>/` and is attached the same way.
+   For a manual finding, save the screenshot or recording in
+   `src/evidence/<BUG-KEY>/` and pass `--files <name.png>,<name.webm>` instead of
+   `--tc`. Re-running replaces the Evidence section rather than adding another.
 3. List it in the parent ticket's final report:
    `Bugs raised: <BUG-KEY> — one line — evidence attached y/n`.
 4. Browser version for automated runs: the Chromium bundled with the pinned

@@ -8,9 +8,10 @@
 
 node_modules/
 playwright-report/
-test-results/
+src/test-results/
 allure-results/
 allure-report/
+.gitcommands
 
 # Evidence bundles (EVIDENCE=true). Regenerate when you need them.
-evidence/
+src/evidence/

@@ -34,9 +34,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run scan:secrets
       - run: npm run check:tool-sync
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
+      - run: npm run report:allure:generate
+        if: always()
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -46,8 +51,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: allure-results
-          path: allure-results/
+          name: allure-report
+          path: allure-report/
           retention-days: 7
 
   # Your own environments, started by hand from the Actions tab.
@@ -73,11 +78,14 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
+      - run: npm run report:allure:generate
+        if: always()
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: evidence-${{ inputs.test_env }}
           path: |
-            evidence/
+            src/evidence/
             playwright-report/
+            allure-report/
           retention-days: 14

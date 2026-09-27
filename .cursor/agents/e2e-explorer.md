@@ -10,17 +10,22 @@ else uses to write specs.
 
 1. `docs/APP-MAP.md` → **Navigation index** and **Helpers index**. If the route or
    the widget driver is already recorded, use it and stop looking.
-2. Application source, when this machine has a checkout. Set `APP_SOURCE_DIR` to
-   it. Read **surgically**: grep for the route, open only the components it
-   renders, extract roles, labels, test ids, and request URLs.
+2. Application source, when `APP_SOURCE_DIR` points at a checkout. Run
+   `npm run -s app-source` first: it prints the directory, branch and commit, or
+   `none`. Never read `.env.*` files yourself to find it. Read **surgically**:
+   grep for the route under that directory, open only the components it renders,
+   extract roles, labels, test ids, and request URLs. Source can lag or lead the
+   deployment, so confirm anything surprising against the running app.
 3. The running app through the Playwright MCP server, when there is no source.
-   Open the page, take a snapshot, and read the accessibility tree.
+   Open the page, take a snapshot, and read the accessibility tree. Say which
+   states you could not reach (empty lists, missing permissions, flags off).
 
 Never paste whole files, whole components, or raw API responses into your reply.
 
 ## What to return
 
 ```
+Source: <APP-MAP | app source: dir (branch @ commit) | running app>
 Route: <path> (how to reach it: deep link or click path)
 Auth: <what the page needs: signed-in session, a role, a tenant>
 Page objects that already cover this: <pages/... or "none">

@@ -14,10 +14,7 @@ import { PASS_THRESHOLD, checkMetric, rubrics, type Check } from "./metrics";
  * Playwright specs follow. A check that passes both is not measuring anything.
  */
 function sample(kind: string, file: "input" | "good" | "bad"): string {
-	return readFileSync(
-		path.join(import.meta.dirname, "samples", kind, `${file}.md`),
-		"utf8",
-	);
+	return readFileSync(path.join(import.meta.dirname, "samples", kind, `${file}.md`), "utf8");
 }
 
 /** Score one sample against one check and print the judge's verdict. */
@@ -29,15 +26,12 @@ async function score(kind: string, which: "good" | "bad", check: Check) {
 			actualOutput: sample(kind, which),
 		}),
 	);
-	console.log(
-		`[evals] ${kind}/${which} · ${check.name}: ${result.toFixed(2)} — ${metric.reason}`,
-	);
+	console.log(`[evals] ${kind}/${which} · ${check.name}: ${result.toFixed(2)} — ${metric.reason}`);
 	return { result, reason: metric.reason };
 }
 
 const judgeMissing = await judgeUnavailableReason();
-if (judgeMissing)
-	console.warn(`[evals] judgment checks skipped — ${judgeMissing}`);
+if (judgeMissing) console.warn(`[evals] judgment checks skipped — ${judgeMissing}`);
 
 describe("QA artifact rubrics", () => {
 	for (const [kind, checks] of Object.entries(rubrics)) {

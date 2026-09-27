@@ -18,5 +18,7 @@ export function fail(message) {
 export async function expectOk(res, what) {
 	if (res.ok) return res;
 	const body = await res.text().catch(() => "");
-	throw new Error(`${what} → ${res.status} ${res.statusText}${body ? `: ${body.slice(0, 500)}` : ""}`);
+	throw new Error(
+		`${what} → ${res.status} ${res.statusText}${body ? `: ${body.slice(0, 500)}` : ""}`,
+	);
 }

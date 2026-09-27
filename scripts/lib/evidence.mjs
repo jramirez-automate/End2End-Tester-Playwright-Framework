@@ -62,20 +62,88 @@ export function mergeRuns(runs) {
 	return { environments, rows };
 }
 
-/** Every media file the merged table references, in stable order. */
-export function referencedMedia(ticket, rows) {
+/**
+ * Every media file the merged table references, in stable order.
+ *
+ *   traces  also include each referenced case's `<base>-trace.zip`
+ *   only    keep names containing this substring
+ */
+export function referencedMedia(ticket, rows, { traces = false, only } = {}) {
 	const dir = bundleDir(ticket);
 	const names = [];
+	const add = (name) => {
+		if (!names.includes(name)) names.push(name);
+	};
 	for (const row of rows) {
 		for (const result of Object.values(row.results)) {
 			for (const name of result.media ?? []) {
-				if (!names.includes(name)) names.push(name);
+				add(name);
+				if (traces) add(`${mediaBase(name)}-trace.zip`);
 			}
 		}
 	}
 	return names
+		.filter((name) => !only || name.includes(only))
 		.map((name) => ({ name, file: path.join(dir, name) }))
 		.filter((entry) => fs.existsSync(entry.file));
+}
+
+/** `checkout-dev-FAILED-2.png` → `checkout-dev-FAILED`: the reporter's per-test base name. */
+function mediaBase(name) {
+	return name.replace(/\.[^.]+$/, "").replace(/-\d+$/, "");
+}
+
+/** The failure media of one test case, across every environment it failed on. */
+export function failedMedia(ticket, row) {
+	const dir = bundleDir(ticket);
+	return Object.values(row.results)
+		.filter((result) => result.status === "Fail")
+		.flatMap((result) => result.media ?? [])
+		.filter((name) => name.includes("-FAILED"))
+		.map((name) => ({ name, file: path.join(dir, name) }))
+		.filter((entry) => fs.existsSync(entry.file));
+}
+
+/**
+ * The test-case plan: written from the ticket's criteria before any spec
+ * exists (see templates/test-cases.example.json). Cases, not results.
+ */
+export function planFile(ticket, override) {
+	return override ?? path.join(bundleDir(ticket), "test-cases.json");
+}
+
+export function readPlan(file) {
+	if (!fs.existsSync(file)) {
+		throw new Error(`No test-case plan at ${file}. Start from templates/test-cases.example.json.`);
+	}
+	const plan = JSON.parse(fs.readFileSync(file, "utf8"));
+	const cases = plan.cases ?? [];
+	const problems = [];
+	cases.forEach((entry, index) => {
+		const where = entry.tc ?? `case ${index + 1}`;
+		if (!/^TC-\d{3}$/.test(entry.tc ?? "")) problems.push(`${where}: tc must look like TC-001`);
+		if (!entry.name) problems.push(`${where}: name is required`);
+		if (!entry.steps?.length) problems.push(`${where}: at least one step is required`);
+		if (!entry.expected) problems.push(`${where}: expected is required`);
+	});
+	if (!cases.length) problems.push("the plan has no cases");
+	if (problems.length) throw new Error(`Invalid plan ${file}:\n  ${problems.join("\n  ")}`);
+	return cases;
+}
+
+/** What `cases` created, so `mark-pass` records against the same cases and cycle. */
+export function zephyrStateFile(ticket) {
+	return path.join(bundleDir(ticket), "zephyr.json");
+}
+
+export function readZephyrState(ticket) {
+	const file = zephyrStateFile(ticket);
+	return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : undefined;
+}
+
+export function writeZephyrState(ticket, state) {
+	fs.mkdirSync(bundleDir(ticket), { recursive: true });
+	fs.writeFileSync(zephyrStateFile(ticket), `${JSON.stringify(state, null, 2)}\n`);
 }
 
 export function overallStatus(rows) {

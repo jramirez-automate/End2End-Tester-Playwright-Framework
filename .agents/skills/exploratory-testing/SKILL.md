@@ -107,7 +107,7 @@ Then route what you found:
 
 ## In this repo
 
-- Write envs are `WRITE_ENVS` in `utils/env.ts`; everything else runs `@smoke`
+- Write envs are `WRITE_ENVS` in `src/utils/env.ts`; everything else runs `@smoke`
   only. Ask before any shared or production session (`env-run-approval`).
 - Durable facts go to `docs/APP-MAP.md` → **Quirks**.
-- Save session notes and media under `evidence/<KEY>/` (gitignored).
+- Save session notes and media under `src/evidence/<KEY>/` (gitignored).

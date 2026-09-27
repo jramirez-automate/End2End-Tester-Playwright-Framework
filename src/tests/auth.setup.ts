@@ -5,7 +5,7 @@ import { test as setup, expect } from "../fixtures";
 import { LoginPage } from "../pages";
 import { credentials, credentialsConfigured, currentTestEnv } from "../utils";
 
-const authFile = path.join(__dirname, "../.auth/user.json");
+const authFile = path.join(__dirname, "../../.auth/user.json");
 const emptyState = { cookies: [], origins: [] };
 
 /**

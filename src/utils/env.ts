@@ -18,6 +18,8 @@ export const DEMO_DEFAULTS: Record<string, string> = {
 	E2E_USERNAME: "standard_user",
 	E2E_PASSWORD: "secret_sauce",
 	TODO_APP_URL: "https://demo.playwright.dev/todomvc",
+	// Public sample REST API. Writes are faked: it answers 201 and stores nothing.
+	API_BASE_URL: "https://jsonplaceholder.typicode.com/",
 };
 
 export function currentTestEnv(): string {
@@ -34,7 +36,7 @@ export function isDemoEnv(testEnv = currentTestEnv()): boolean {
  */
 export function loadTestEnv(): string {
 	const testEnv = currentTestEnv();
-	dotenv.config({ path: path.resolve(__dirname, `../.env.${testEnv}`), quiet: true });
+	dotenv.config({ path: path.resolve(__dirname, `../../.env.${testEnv}`), quiet: true });
 	if (isDemoEnv(testEnv)) {
 		for (const [key, value] of Object.entries(DEMO_DEFAULTS)) {
 			process.env[key] ??= value;
@@ -60,11 +62,7 @@ export function isWriteEnv(testEnv = currentTestEnv()): boolean {
 	}
 	if (!WRITE_ENVS.includes(testEnv)) return false;
 	// Staging stays read-only in CI until writes are turned on deliberately.
-	if (
-		testEnv === "staging" &&
-		process.env.CI &&
-		process.env.E2E_STAGING_WRITES !== "true"
-	) {
+	if (testEnv === "staging" && process.env.CI && process.env.E2E_STAGING_WRITES !== "true") {
 		return false;
 	}
 	return true;
