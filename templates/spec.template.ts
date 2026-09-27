@@ -1,5 +1,5 @@
 /**
- * Copy to tests/<feature>/<name>.spec.ts.
+ * Copy to src/tests/<feature>/<name>.spec.ts.
  * Write one test, run it alone, then the next.
  * Tag the describe with the ticket id: { tag: "@ABC-123" }.
  */

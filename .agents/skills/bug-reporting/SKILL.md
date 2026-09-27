@@ -90,7 +90,7 @@ would catch it coming back, add a case (`test-case-design`) and automate it.
 
 1. Create the bug in the configured tracker (`.env.publish`: Jira or GitHub).
 2. Give it its own proof. One command copies the failed case's `*-FAILED.png`
-   and `*-FAILED.webm` into `evidence/<BUG-KEY>/`, attaches them, embeds them in
+   and `*-FAILED.webm` into `src/evidence/<BUG-KEY>/`, attaches them, embeds them in
    the bug's description under an **Evidence** heading, and links the bug to
    the ticket under test:
    ```
@@ -98,7 +98,7 @@ would catch it coming back, add a case (`test-case-design`) and automate it.
    node scripts/publish.mjs bug --ticket <BUG-KEY> --from <KEY> --tc <TC-00N>
    ```
    For a manual finding, save the screenshot or recording in
-   `evidence/<BUG-KEY>/` and pass `--files <name.png>,<name.webm>` instead of
+   `src/evidence/<BUG-KEY>/` and pass `--files <name.png>,<name.webm>` instead of
    `--tc`. Re-running replaces the Evidence section rather than adding another.
 3. List it in the parent ticket's final report:
    `Bugs raised: <BUG-KEY> — one line — evidence attached y/n`.

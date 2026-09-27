@@ -9,9 +9,9 @@ Ticket key: `$ARGUMENTS`
 
 ## 0 · Ground rules
 
-- Specs live in `tests/<feature>/`, named by feature, never by ticket. The
+- Specs live in `src/tests/<feature>/`, named by feature, never by ticket. The
   ticket is a tag: `test.describe("…", { tag: "@ABC-123" }, …)`.
-- Import `test` and `expect` from `fixtures.ts`.
+- Import `test` and `expect` from `src/fixtures.ts`.
 - Write flows run on write environments only. Production is `@smoke`.
   **Ask before any run against a shared or production environment.**
 - Data the tests create is named with `e2eName()` and deleted in `afterEach`.
@@ -64,7 +64,7 @@ with the failure media attached to that bug.
 - Append the ticket's row to `COVERAGE.md`.
 - Add any `NEW NAV FACT` to the Navigation index and any `NEW HELPER` to the
   Helpers index in `docs/APP-MAP.md`, extracting the helper into
-  `utils/interactions.ts` first.
+  `src/utils/interactions.ts` first.
 
 ## Final report
 

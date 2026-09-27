@@ -12,7 +12,7 @@ read without running anything.
 
 1. Capture: `TICKET=<key> EVIDENCE=true npx playwright test`. Repeat per
    environment that was tested; filenames carry the environment, so bundles for
-   two environments coexist in `evidence/<key>/`.
+   two environments coexist in `src/evidence/<key>/`.
 2. **Look at every artifact.** For each test case, open the screenshot and
    confirm the named subject of that requirement is visible and readable, and
    that the video contains the proving moment. A pass whose media shows a blank
@@ -22,7 +22,7 @@ read without running anything.
    view, keep the proving dialog or toast open, or attach a focused shot
    mid-test with `test.info().attach("screenshot", …)`.
 4. Write the summary: `node scripts/publish.mjs summary --ticket <key>` produces
-   `evidence/<key>/SUMMARY.md` from `results-<env>.json`. Add a short findings
+   `src/evidence/<key>/SUMMARY.md` from `results-<env>.json`. Add a short findings
    section by hand when something failed: what broke, where, and the media that
    shows it.
 
@@ -38,7 +38,7 @@ read without running anything.
 ## Report format (your whole reply)
 
 ```
-Bundle: evidence/<key>/  (<n> cases, <n> environments)
+Bundle: src/evidence/<key>/  (<n> cases, <n> environments)
 Verdicts: <n> Pass / <n> Fail / <n> Skipped
 Media check: <n> artifacts verified, <n> recaptured, <n> still unusable
 Findings: <one line each, with the file that shows it> (or "none")

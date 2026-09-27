@@ -1,6 +1,6 @@
 ---
 name: api-testing
-description: Playwright API testing practices — authenticated APIRequestContext, status/body/schema assertions, error and auth-negative cases, API data seeding, readable GIVEN/WHEN/THEN steps, and API-vs-UI decisions. Use when writing or reviewing `*.api.spec.ts` files, adding an API helper to `utils/`, seeding prerequisite data via the API, or deciding whether a check belongs in an API or UI test.
+description: Playwright API testing practices — authenticated APIRequestContext, status/body/schema assertions, error and auth-negative cases, API data seeding, readable GIVEN/WHEN/THEN steps, and API-vs-UI decisions. Use when writing or reviewing `*.api.spec.ts` files, adding an API helper to `src/utils/`, seeding prerequisite data via the API, or deciding whether a check belongs in an API or UI test.
 ---
 
 # API testing
@@ -10,11 +10,11 @@ disagree, `AGENTS.md` wins.
 
 ## Setup
 
-- Import `test` / `expect` from `fixtures.ts`, never `@playwright/test`.
+- Import `test` / `expect` from `src/fixtures.ts`, never `@playwright/test`.
 - Do **not** rely on the built-in `request` fixture: it inherits
   `use.baseURL`, which is the app (UI) origin, and it carries no auth. Build a
   context from the API origin and token instead. The first spec that needs it
-  adds `utils/api.ts` (and re-exports it from `utils/index.ts`):
+  adds `src/utils/api.ts` (and re-exports it from `src/utils/index.ts`):
 
   ```typescript
   import { request, type APIRequestContext } from "@playwright/test";
@@ -39,7 +39,7 @@ disagree, `AGENTS.md` wins.
   resolves against the host root and drops the `/api/` prefix.
 - Use `playwright.request.newContext({ baseURL })` with no token only for
   deliberately unauthenticated calls (the 401 test).
-- Name specs `tests/<feature>/<name>.api.spec.ts` beside the UI spec of the
+- Name specs `src/tests/<feature>/<name>.api.spec.ts` beside the UI spec of the
   same feature — by domain, never by ticket. Tag with the ticket like any spec.
 - Data safety (`@smoke` vs write envs), `e2eName()`, `CleanupRegistry`,
   env-run approval and the one-slice-at-a-time TDD loop apply exactly as for

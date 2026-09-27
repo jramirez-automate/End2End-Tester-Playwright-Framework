@@ -4,7 +4,7 @@
  *
  *   node scripts/publish.mjs <command> --ticket ABC-123 [--dry-run]
  *
- * Every result comes from evidence/<ticket>/results-<env>.json, which the run
+ * Every result comes from src/evidence/<ticket>/results-<env>.json, which the run
  * writes. The only hand-written input is the test-case plan used by `cases`,
  * and that holds cases, never results.
  *
@@ -62,7 +62,7 @@ Publish one ticket's evidence bundle.
   node scripts/publish.mjs <command> --ticket ABC-123 [options]
 
 Commands
-  summary    Write evidence/<ticket>/SUMMARY.md from the run results
+  summary    Write src/evidence/<ticket>/SUMMARY.md from the run results
   attach     Upload the media the results table references
   comment    Post the results table, with media embedded inline
   plan       Create or update the test plan page, with media embedded
@@ -86,11 +86,11 @@ Options
   --target <name>      plan / prune: wiki destination (CONFLUENCE_<NAME>_*).
   --page-id <id>       plan / prune: this page, not a title lookup.
   --skip-media         plan: republish the body without re-uploading media.
-  --plan <file>        cases: defaults to evidence/<ticket>/test-cases.json.
+  --plan <file>        cases: defaults to src/evidence/<ticket>/test-cases.json.
   --force              cases: create again although zephyr.json exists.
   --from <key>         bug: the ticket whose run found the failure.
   --tc <TC-00N>        bug: the failed case to take the proof from.
-  --files <a,b>        bug: a manual finding's media, already in evidence/<bug>/.
+  --files <a,b>        bug: a manual finding's media, already in src/evidence/<bug>/.
   --dry-run            Print what would happen and write nothing.
 
 Providers are configured in .env.publish (see .env.publish.example).
@@ -365,7 +365,7 @@ async function cmdCleanup(table) {
 	);
 }
 
-/** A manual finding's own media, already saved in evidence/<BUG-KEY>/. */
+/** A manual finding's own media, already saved in src/evidence/<BUG-KEY>/. */
 function manualMedia(list) {
 	const dir = bundleDir(ticket);
 	const media = list

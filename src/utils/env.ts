@@ -34,7 +34,7 @@ export function isDemoEnv(testEnv = currentTestEnv()): boolean {
  */
 export function loadTestEnv(): string {
 	const testEnv = currentTestEnv();
-	dotenv.config({ path: path.resolve(__dirname, `../.env.${testEnv}`), quiet: true });
+	dotenv.config({ path: path.resolve(__dirname, `../../.env.${testEnv}`), quiet: true });
 	if (isDemoEnv(testEnv)) {
 		for (const [key, value] of Object.entries(DEMO_DEFAULTS)) {
 			process.env[key] ??= value;

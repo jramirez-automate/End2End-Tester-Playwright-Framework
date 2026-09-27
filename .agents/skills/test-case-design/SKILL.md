@@ -85,7 +85,7 @@ see that the edges were deliberate.
 
 - The table is the numbered checklist `/e2e-ticket` step 1 asks for — put it
   on the ticket before any spec is written. To create the cases in test
-  management up front, also write it as `evidence/<KEY>/test-cases.json`
+  management up front, also write it as `src/evidence/<KEY>/test-cases.json`
   (`templates/test-cases.example.json`) and run
   `node scripts/publish.mjs cases --ticket <KEY> --dry-run`, then without
   `--dry-run`. Each case's `test` field is the Playwright test title, filled in

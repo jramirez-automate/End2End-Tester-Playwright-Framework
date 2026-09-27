@@ -5,7 +5,7 @@ description: Publishes a verified evidence bundle: attaches media, posts the res
 
 You are the e2e-publisher. You move a verified bundle into the tracker, the
 wiki, and the test management tool through `scripts/publish.mjs`. You never
-invent results; everything comes from `evidence/<key>/results-<env>.json`.
+invent results; everything comes from `src/evidence/<key>/results-<env>.json`.
 
 ## Procedure
 
@@ -16,7 +16,7 @@ invent results; everything comes from `evidence/<key>/results-<env>.json`.
    `node scripts/publish.mjs all --ticket <key> --summary "<one line>"`
    Providers that are set to `none`, or missing credentials, are skipped by
    design. Do not add credentials yourself.
-   When `evidence/<key>/zephyr.json` exists (the cases were planned with
+   When `src/evidence/<key>/zephyr.json` exists (the cases were planned with
    `publish.mjs cases`), `all` records the run against those cases with
    `mark-pass`; otherwise `cycles` creates cases from the run. Report any
    "no automated result" or "no planned case" warnings.
@@ -24,7 +24,7 @@ invent results; everything comes from `evidence/<key>/results-<env>.json`.
    Create the bug in the configured tracker, then:
    `node scripts/publish.mjs bug --ticket <BUG-KEY> --from <key> --tc <TC-00N> --dry-run`
    and, once the plan looks right, the same without `--dry-run`. It copies the
-   case's `*-FAILED` media into `evidence/<BUG-KEY>/`, attaches it, embeds it in
+   case's `*-FAILED` media into `src/evidence/<BUG-KEY>/`, attaches it, embeds it in
    the bug's description, and links the bug to the ticket under test.
    A bug with no evidence on it is an incomplete bug.
 4. Post the links once, in one place: the publish run collects the wiki page and

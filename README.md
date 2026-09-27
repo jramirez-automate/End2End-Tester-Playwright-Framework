@@ -16,11 +16,11 @@ Companion docs:
 ## Structure
 
 ```
-tests/<feature>/         # specs grouped by feature domain (auth/, checkout/, inventory/, todo/)
-tests/auth.setup.ts      # signs in once; the "setup" project every spec depends on
-pages/                   # page objects (extend BasePage; barrel index.ts)
-types/                   # shared types
-utils/                   # env.ts (TEST_ENV/write-env/site), test-data.ts (e2eName), cleanup.ts (CleanupRegistry)
+src/tests/<feature>/         # specs grouped by feature domain (auth/, checkout/, inventory/, todo/)
+src/tests/auth.setup.ts      # signs in once; the "setup" project every spec depends on
+src/pages/                   # page objects (extend BasePage; barrel index.ts)
+src/types/                   # shared types
+src/utils/                   # env.ts (TEST_ENV/write-env/site), test-data.ts (e2eName), cleanup.ts (CleanupRegistry)
 scripts/                 # publishing pipeline (attach / comment / plan / cycles / notify) + tool-sync check
 templates/               # scaffolds for a new spec and a new page object
 docs/                    # APP-MAP.md
@@ -31,7 +31,7 @@ Ticket traceability is by **tag**, not by directory: `test.describe("...", { tag
 
 ## Environments
 
-`TEST_ENV` selects the `.env.<env>` file and the target. **Data safety is enforced in `playwright.config.ts`:** only the write envs (`demo`, `local`, `dev`, `staging` — `WRITE_ENVS` in `utils/env.ts`) run write/destructive flows; every other env is forced to `@smoke` (read-only) tests, so a write test can never touch shared/production data even if pointed there.
+`TEST_ENV` selects the `.env.<env>` file and the target. **Data safety is enforced in `playwright.config.ts`:** only the write envs (`demo`, `local`, `dev`, `staging` — `WRITE_ENVS` in `src/utils/env.ts`) run write/destructive flows; every other env is forced to `@smoke` (read-only) tests, so a write test can never touch shared/production data even if pointed there.
 
 | TEST_ENV  | Target                              | Tests that run        | Credentials |
 | --------- | ----------------------------------- | --------------------- | ----------- |
@@ -43,13 +43,13 @@ Ticket traceability is by **tag**, not by directory: `test.describe("...", { tag
 
 ⚠ **Ask before running against a shared or production environment** — that is a rule the agents follow too (`.cursor/rules/env-run-approval.mdc`). Demo and local need no approval.
 
-¹ Staging writes apply to local/ad-hoc runs only: in CI staging stays `@smoke` unless `E2E_STAGING_WRITES=true` is deliberately set on the pipeline (`utils/env.ts` → `isWriteEnv`).
+¹ Staging writes apply to local/ad-hoc runs only: in CI staging stays `@smoke` unless `E2E_STAGING_WRITES=true` is deliberately set on the pipeline (`src/utils/env.ts` → `isWriteEnv`).
 
-² `demo` is the default. It points at a public sample shop and the Playwright TodoMVC sample, with public credentials baked into `DEMO_DEFAULTS` in `utils/env.ts` — no `.env` file, nothing private, nothing to clean up.
+² `demo` is the default. It points at a public sample shop and the Playwright TodoMVC sample, with public credentials baked into `DEMO_DEFAULTS` in `src/utils/env.ts` — no `.env` file, nothing private, nothing to clean up.
 
 ³ This repo doesn't build the app: `TEST_ENV=local` expects your dev server already running on `:3000`. The other targets are **deployed** environments.
 
-Write specs read the tenant from `E2E_SITE_NAME` (via `utils/env.ts` → `siteName()`) — never hardcode it.
+Write specs read the tenant from `E2E_SITE_NAME` (via `src/utils/env.ts` → `siteName()`) — never hardcode it.
 
 ## App source for selector tracing (optional)
 
@@ -85,7 +85,7 @@ npm run test:headed                       # browser visible
 npm run test:staging                      # full suite (write env)
 npm run test:prod                         # @smoke only
 TICKET=ABC-123 npm run test:dev           # only tests tagged @ABC-123
-TICKET=ABC-123 npm run test:evidence      # per-ticket evidence bundle → evidence/ABC-123/
+TICKET=ABC-123 npm run test:evidence      # per-ticket evidence bundle → src/evidence/ABC-123/
 npm run typecheck && npm run check:tool-sync
 ```
 
@@ -94,16 +94,16 @@ In CI, `BASE_URL` and credentials come from repository secrets instead of a file
 ### Point it at your app
 
 1. Set `BASE_URL` and a dedicated test account in `.env.<environment>`.
-2. Adapt `pages/LoginPage.ts` to your sign-in form. It is written against roles and placeholders, handles both a single form and the email-then-password pattern, and is the only file most apps need to change.
-3. Replace the demo specs and `pages/demo/` with your own features, scaffolded from `templates/`.
+2. Adapt `src/pages/LoginPage.ts` to your sign-in form. It is written against roles and placeholders, handles both a single form and the email-then-password pattern, and is the only file most apps need to change.
+3. Replace the demo specs and `src/pages/demo/` with your own features, scaffolded from `templates/`.
 4. If write tests must select a tenant or site, set `E2E_SITE_NAME` and implement the selection in a page object.
 
 ## Data safety: `@smoke` (read-only) vs write tests
 
-- **`@smoke`** — tag read-only tests (no create/edit/delete). Safe on any env. Tag a whole file with `test.describe("...", { tag: "@smoke" }, () => { ... })`. See `tests/auth/sign-in.spec.ts` and `tests/inventory/product-list.spec.ts`.
+- **`@smoke`** — tag read-only tests (no create/edit/delete). Safe on any env. Tag a whole file with `test.describe("...", { tag: "@smoke" }, () => { ... })`. See `src/tests/auth/sign-in.spec.ts` and `src/tests/inventory/product-list.spec.ts`.
 - **Write tests** — tag with their ticket only (no `@smoke`), e.g. `{ tag: "@ABC-123" }`. The config's `grep` guard means they only run on write envs, never production.
-- **Mandatory cleanup** (see `AGENTS.md` → Data discipline): every created entity is named with `e2eName("Kind")` (→ `E2E-Kind-…`, instantly identifiable if a crashed run leaves strays) and deleted in `afterEach` — either a page object's best-effort `delete*ByName` or `CleanupRegistry` (`utils/cleanup.ts`, LIFO) for multi-entity flows where a dependent must go before the record it points at.
-- **Sessions carry state.** A test that changes something the saved session remembers (a cart, a draft, a filter) must undo it, or the next test starts dirty — that is exactly what `tests/checkout/cart-checkout.spec.ts` demonstrates.
+- **Mandatory cleanup** (see `AGENTS.md` → Data discipline): every created entity is named with `e2eName("Kind")` (→ `E2E-Kind-…`, instantly identifiable if a crashed run leaves strays) and deleted in `afterEach` — either a page object's best-effort `delete*ByName` or `CleanupRegistry` (`src/utils/cleanup.ts`, LIFO) for multi-entity flows where a dependent must go before the record it points at.
+- **Sessions carry state.** A test that changes something the saved session remembers (a cart, a draft, a filter) must undo it, or the next test starts dirty — that is exactly what `src/tests/checkout/cart-checkout.spec.ts` demonstrates.
 - **Specs that exercise sign-in need a clean session:** `test.use({ storageState: { cookies: [], origins: [] } })`, otherwise the saved session skips straight past the form.
 - Lists are often **paginated and sorted by name** — always search for the name before asserting a row; `E2E-…` names typically sort onto page 2+.
 
@@ -116,19 +116,19 @@ TICKET=ABC-123 npm run test:evidence            # default env
 TICKET=ABC-123 TEST_ENV=staging EVIDENCE=true npx playwright test
 ```
 
-`EVIDENCE=true` captures a **screenshot and video for every test (pass or fail)** plus a trace; `TICKET=ABC-123` filters to that ticket's tagged tests and routes everything into `evidence/<TICKET>/`. The custom `evidence-reporter.ts` copies each test's artifacts to descriptive names derived from the test title, with the env in the filename so two envs coexist:
+`EVIDENCE=true` captures a **screenshot and video for every test (pass or fail)** plus a trace; `TICKET=ABC-123` filters to that ticket's tagged tests and routes everything into `src/evidence/<TICKET>/`. The custom `evidence-reporter.ts` copies each test's artifacts to descriptive names derived from the test title, with the env in the filename so two envs coexist:
 
 ```
-evidence/ABC-123/
+src/evidence/ABC-123/
   a-cart-can-be-checked-out-to-a-confirmation-dev.png / .webm / -trace.zip
   adding-products-updates-the-cart-badge-dev-FAILED.png   (failed tests keep their proof)
   results-dev.json        # machine-written: status, tags, media, error per test
   SUMMARY.md              # generated table, one column per env that ran
   artifacts/              # raw Playwright layout (kept for traceability)
-  report/                 # browsable HTML report (npx playwright show-report evidence/ABC-123/report)
+  report/                 # browsable HTML report (npx playwright show-report src/evidence/ABC-123/report)
 ```
 
-Everything under `evidence/` is git-ignored — regenerate on demand. Without `TICKET`, evidence goes to `evidence/` for the whole run. Normal runs stay fast and only keep artifacts on failure.
+Everything under `src/evidence/` is git-ignored — regenerate on demand. Without `TICKET`, evidence goes to `src/evidence/` for the whole run. Normal runs stay fast and only keep artifacts on failure.
 
 `results-<env>.json` is the part that makes publishing hands-off: the results table, the summary, and the wiki page are all generated from the run, so nobody ever types a row. A wrong row means the run was wrong.
 
@@ -164,7 +164,7 @@ node scripts/publish.mjs all --ticket ABC-123 --summary "Checkout regression"
 | `attach` | Upload the media the results table references, skipping anything already attached. `--traces` adds each case's trace, `--only <text>` narrows by filename |
 | `comment` | Post the results table with media **embedded inline**, not linked |
 | `plan` | Create or update the wiki test plan, with each case's media uploaded and embedded. `--target <name>` picks a destination, `--page-id` updates a known page, `--skip-media` republishes the body only |
-| `cases` | Create planned test cases and a cycle from `evidence/<key>/test-cases.json`, **before** any spec exists |
+| `cases` | Create planned test cases and a cycle from `src/evidence/<key>/test-cases.json`, **before** any spec exists |
 | `mark-pass` | Record the run's results against those planned cases |
 | `cycles` | No plan: create cases from the run, a cycle per environment, and an execution per case |
 | `notify` | Post a chat card, gated to `NOTIFY_ON_ENVS` and a fully green run |
@@ -180,7 +180,7 @@ Two details worth knowing:
 - **Inline media needs ADF.** A markdown comment can only *link* an attachment. The Jira adapter resolves each attachment to its media-services id and builds real media nodes, so thumbnails and playable video render inside the results table.
 - **Cleanup is guarded.** A file is only a delete candidate when this pipeline uploaded it, it carries a capture-artifact extension, and no comment references it. Anything else is kept and reported, so source material someone attached by hand never disappears.
 
-- **Planned cases come first.** Write the ticket's cases as `evidence/<key>/test-cases.json` (start from `templates/test-cases.example.json`) and run `cases` before any spec exists. Each case gets numbered steps and one expected result, and the cycle holds a "Not Executed" execution per case, the record that the cases predate the run. Once a spec exists, put its test title in the case's `test` field; `all` then records results with `mark-pass` instead of creating new cases. The plan holds cases, never results.
+- **Planned cases come first.** Write the ticket's cases as `src/evidence/<key>/test-cases.json` (start from `templates/test-cases.example.json`) and run `cases` before any spec exists. Each case gets numbered steps and one expected result, and the cycle holds a "Not Executed" execution per case, the record that the cases predate the run. Once a spec exists, put its test title in the case's `test` field; `all` then records results with `mark-pass` instead of creating new cases. The plan holds cases, never results.
 - **Wiki destinations are configuration.** `--target release` reads `CONFLUENCE_RELEASE_SPACE_ID`, `_SPACE_KEY` and `_PARENT_PAGE_ID`, falling back to the default space for anything unset.
 
 With no credentials every command runs as a **dry run**, which is also how you demo or review the pipeline safely. `cleanup` and `prune` are the exception: they read the live issue or page, so they skip without credentials.
@@ -192,13 +192,13 @@ node scripts/publish.mjs bug --ticket BUG-7 --from ABC-123 --tc TC-003 --dry-run
 node scripts/publish.mjs bug --ticket BUG-7 --from ABC-123 --tc TC-003
 ```
 
-It copies that case's `*-FAILED.png` / `*-FAILED.webm` into `evidence/BUG-7/`, attaches them, embeds them in the bug's description under an **Evidence** heading (replaced, not duplicated, on a re-run), and links the bug to `ABC-123`. For a manual finding, save the media in `evidence/BUG-7/` and pass `--files a.png,b.webm` instead of `--tc`.
+It copies that case's `*-FAILED.png` / `*-FAILED.webm` into `src/evidence/BUG-7/`, attaches them, embeds them in the bug's description under an **Evidence** heading (replaced, not duplicated, on a re-run), and links the bug to `ABC-123`. For a manual finding, save the media in `src/evidence/BUG-7/` and pass `--files a.png,b.webm` instead of `--tc`.
 
 ## Reporting
 
 Three reporters, all wired in `playwright.config.ts`:
 
-- **HTML** — `npm run report` (or `evidence/<TICKET>/report/` in evidence mode).
+- **HTML** — `npm run report` (or `src/evidence/<TICKET>/report/` in evidence mode).
 - **Allure Report 3** — the run report: statuses, retries, trend, severity and failure categories. Its command-line tool is Node, so there is **no Java** anywhere. Results land in `allure-results/` (`ALLURE=false` skips them for one run).
 
   ```bash
@@ -208,7 +208,7 @@ Three reporters, all wired in `playwright.config.ts`:
   npm run allure:clean             # drop allure-results/ before a fresh full run
   ```
 
-  `utils/allure-config.ts` turns `@ABC-123` tags into issue links (set `ALLURE_JIRA_BROWSE_URL`), groups and ranks tests by the `STORIES` map, buckets failures by shape, and names the environment, `APP_VERSION` and commit the run describes. `allurerc.mjs` builds the per-test report and the dashboard in one pass and appends to `docs/allure-history.jsonl`, which is committed so the trend survives a fresh clone. Declare failures that are already raised defects under `resolutions` there, never in `known-issues.json`.
+  `src/utils/allure-config.ts` turns `@ABC-123` tags into issue links (set `ALLURE_JIRA_BROWSE_URL`), groups and ranks tests by the `STORIES` map, buckets failures by shape, and names the environment, `APP_VERSION` and commit the run describes. `allurerc.mjs` builds the per-test report and the dashboard in one pass and appends to `docs/allure-history.jsonl`, which is committed so the trend survives a fresh clone. Declare failures that are already raised defects under `resolutions` there, never in `known-issues.json`.
 - **Evidence** — only in evidence mode, described above.
 
 ## QA artifact evals
@@ -251,11 +251,11 @@ The demo specs exist so the framework is runnable and reviewable before it is po
 
 | Spec | Capability |
 | --- | --- |
-| `tests/auth.setup.ts` | Sign in once, save the session, share it through a `setup` project dependency |
-| `tests/auth/sign-in.spec.ts` | Clean-session sign-in, both the valid path and the rejected path |
-| `tests/inventory/product-list.spec.ts` | Read-only `@smoke` assertions, including a sort order computed from the page |
-| `tests/checkout/cart-checkout.spec.ts` | A state-changing flow with `CleanupRegistry` teardown, and a validation-error path |
-| `tests/todo/todo-list.spec.ts` | A second app with no auth at all, with data named by `e2eName()` |
+| `src/tests/auth.setup.ts` | Sign in once, save the session, share it through a `setup` project dependency |
+| `src/tests/auth/sign-in.spec.ts` | Clean-session sign-in, both the valid path and the rejected path |
+| `src/tests/inventory/product-list.spec.ts` | Read-only `@smoke` assertions, including a sort order computed from the page |
+| `src/tests/checkout/cart-checkout.spec.ts` | A state-changing flow with `CleanupRegistry` teardown, and a validation-error path |
+| `src/tests/todo/todo-list.spec.ts` | A second app with no auth at all, with data named by `e2eName()` |
 
 Replace them as you add your own features, and keep `COVERAGE.md` as the ledger.
 
@@ -286,7 +286,7 @@ Add a `schedule:` block when you want a nightly regression run.
 The suite is built to make writing a new spec fast — **reuse before you write**:
 
 - **Navigation** — `docs/APP-MAP.md` → "Navigation index" answers "how do I reach page X" (deep link or click path). Check it before hunting routes in the app.
-- **Interactions** — `utils/interactions.ts` + `docs/APP-MAP.md` → "Helpers index" hold shared drivers (`waitForModalDetachedThenToast`, `collectPageErrors`). Reuse them instead of re-writing dialog code; extract a new helper the second time you write the same interaction, and register it in the Helpers index.
+- **Interactions** — `src/utils/interactions.ts` + `docs/APP-MAP.md` → "Helpers index" hold shared drivers (`waitForModalDetachedThenToast`, `collectPageErrors`). Reuse them instead of re-writing dialog code; extract a new helper the second time you write the same interaction, and register it in the Helpers index.
 - **Scaffolds** — copy `templates/spec.template.ts` / `templates/page-object.template.ts` for a ready-to-fill shell (tags, cleanup, signed-in ritual, money-assertion placeholder).
 - **Session is pre-loaded** — the `setup` project saves the signed-in session, so specs open the page directly instead of driving the login form every test.
 - **Codegen** — after one run has written `.auth/user.json`, capture selectors and flows fast, then refine them into page objects (getByRole first — never paste raw codegen into specs):
@@ -312,7 +312,7 @@ flowchart TD
         C["2 · Map the screen:<br/>route → components → selectors<br/>→ network waits → reusable page objects<br/>= selector/flow map"]
     end
 
-    C --> E["3 · TDD slice loop (main chat, steerable)<br/>one test → run alone → red proof → green → next<br/>tests/&lt;feature&gt;/*.spec.ts · @ABC-123 tag · e2eName() · afterEach cleanup"]
+    C --> E["3 · TDD slice loop (main chat, steerable)<br/>one test → run alone → red proof → green → next<br/>src/tests/&lt;feature&gt;/*.spec.ts · @ABC-123 tag · e2eName() · afterEach cleanup"]
     E --> LIST["sanity: npx playwright test --list<br/>+ TICKET=ABC-123 filter shows exactly them"]
 
     subgraph RUNNER["🏃 e2e-runner agent"]
@@ -327,7 +327,7 @@ flowchart TD
     F2 --> G
 
     subgraph EVIDENCE["📸 e2e-evidence agent"]
-        G["6 · TICKET=X npm run test:evidence<br/>→ evidence/X/ descriptive .png + .webm + traces"]
+        G["6 · TICKET=X npm run test:evidence<br/>→ src/evidence/X/ descriptive .png + .webm + traces"]
         G --> H["Verify every artifact visually<br/>subject in frame → SUMMARY.md"]
     end
 
@@ -359,12 +359,12 @@ The same workflow ships for two AI tools, and a checker keeps them honest:
 
 ### Manual checklist (same rules — see `AGENTS.md`)
 
-1. **Page Object** — add or extend a class in `pages/` for the screen you touch. Prefer `getByRole` selectors (see "Selectors: lessons learned" below).
-2. **Spec** — add `tests/<feature-domain>/<flow>.spec.ts` (feature dirs, never ticket dirs). Start from the signed-in ritual, then drive the flow.
+1. **Page Object** — add or extend a class in `src/pages/` for the screen you touch. Prefer `getByRole` selectors (see "Selectors: lessons learned" below).
+2. **Spec** — add `src/tests/<feature-domain>/<flow>.spec.ts` (feature dirs, never ticket dirs). Start from the signed-in ritual, then drive the flow.
 3. **Prove it can fail** — one test at a time (never batch-write): first run red at the money assertion, or sensitivity-check a first-run green (mutate the key expectation → confirm it fails there → revert byte-exactly, never commit the mutation).
 4. **Tag it** — always tag the describe block with the ticket: `{ tag: "@ABC-123" }`. Add `"@smoke"` too only if it's read-only (then it also runs on production).
 5. **Data discipline** — created entities use `e2eName("Kind")` and are deleted in `afterEach` (`CleanupRegistry` for multi-entity flows). Tenant via `siteName()`.
-6. **Run it headed** before pushing: `npm run test:headed -- tests/<feature>/<flow>.spec.ts`.
+6. **Run it headed** before pushing: `npm run test:headed -- src/tests/<feature>/<flow>.spec.ts`.
 7. **Ledger** — add the ticket's row to `COVERAGE.md`.
 
 ### Signed-in ritual (we are already signed in)
@@ -383,13 +383,13 @@ Use `--` before Playwright options so npm passes them through (all commands from
 
 ```bash
 # One spec file
-npm run test:dev -- tests/checkout/cart-checkout.spec.ts
+npm run test:dev -- src/tests/checkout/cart-checkout.spec.ts
 
 # One test by name (grep)
 npm run test:dev -- -g "confirmation"
 
 # Both, watched in a browser
-npm run test:headed -- tests/checkout/cart-checkout.spec.ts -g "confirmation"
+npm run test:headed -- src/tests/checkout/cart-checkout.spec.ts -g "confirmation"
 ```
 
 Without the `--`, you may see "No tests found" because the filter never reaches Playwright.
@@ -409,15 +409,15 @@ npm run test:ui
 By default a failing test retries once (twice in CI), and the trace and video are recorded only on that retry. That suits a suite run, but in a fix-and-rerun loop it doubles every run, leaves the first failure without a trace, and lets a flake pass on its retry. While debugging, turn both off:
 
 ```bash
-TEST_ENV=dev npx playwright test tests/checkout/cart-checkout.spec.ts --retries=0 --trace=retain-on-failure
+TEST_ENV=dev npx playwright test src/tests/checkout/cart-checkout.spec.ts --retries=0 --trace=retain-on-failure
 ```
 
-Each failing test gets a folder in `test-results/`. Read it in this order:
+Each failing test gets a folder in `src/test-results/`. Read it in this order:
 
 1. **The error message** in the terminal.
 2. **`error-context.md`**: the page's accessibility snapshot at the moment of failure. It usually shows why a locator missed: the element had a different name, sat in a second dialog, or wasn't rendered yet.
 3. **The failure screenshot.**
-4. **`trace.zip`**, when the first three aren't enough: `npx playwright show-trace test-results/<test>/trace.zip` opens the step-by-step viewer.
+4. **`trace.zip`**, when the first three aren't enough: `npx playwright show-trace src/test-results/<test>/trace.zip` opens the step-by-step viewer.
 
 The `e2e-runner` agent follows the same order and flags, except it never opens `show-trace`, because that is a GUI it cannot see. Don't add these flags to `EVIDENCE=true` runs; evidence mode already records everything.
 
@@ -444,7 +444,7 @@ expect(this.usernameInput.or(this.passwordInput).first())
 
 ### Sign-in flows
 
-Hosted sign-in is the most fragile part of any suite. Two shapes cover most of them, and `pages/LoginPage.ts` handles both:
+Hosted sign-in is the most fragile part of any suite. Two shapes cover most of them, and `src/pages/LoginPage.ts` handles both:
 
 - **Single form** — username and password on one screen, then submit.
 - **Email first** — an email field and Continue, then a password field on the next screen.
@@ -470,7 +470,7 @@ When a flow submits a form in a **dialog** and the app shows a **success toast**
 1. **Wait for the dialog to be gone first** — it may show a loading state before closing. Wait for it to be **detached** from the DOM.
 2. **Then assert the toast** — only once the dialog is gone.
 
-**Why this order:** if you assert the toast while the dialog is still open or loading, you race with its DOM and get flaky failures. Confirming the dialog closed means the request finished, which keeps the toast assertion stable. `waitForModalDetachedThenToast` (`utils/interactions.ts`) does both in one call.
+**Why this order:** if you assert the toast while the dialog is still open or loading, you race with its DOM and get flaky failures. Confirming the dialog closed means the request finished, which keeps the toast assertion stable. `waitForModalDetachedThenToast` (`src/utils/interactions.ts`) does both in one call.
 
 Toasts usually auto-dismiss after a few seconds, so assert them before anything slow, and capture evidence while they're still on screen.
 

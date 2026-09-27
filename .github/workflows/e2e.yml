@@ -82,7 +82,7 @@ jobs:
         with:
           name: evidence-${{ inputs.test_env }}
           path: |
-            evidence/
+            src/evidence/
             playwright-report/
             allure-report/
           retention-days: 14

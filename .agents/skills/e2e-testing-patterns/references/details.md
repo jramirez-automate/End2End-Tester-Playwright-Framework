@@ -37,7 +37,7 @@ export default defineConfig({
 ### Pattern 1: Page Object Model
 
 ```typescript
-// pages/LoginPage.ts
+// src/pages/LoginPage.ts
 import { Page, Locator } from "@playwright/test";
 
 export class LoginPage {

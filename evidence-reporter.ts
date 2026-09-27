@@ -8,7 +8,7 @@ import type {
 } from "@playwright/test/reporter";
 
 interface EvidenceReporterOptions {
-	/** Root folder for this run, for example evidence/ABC-123. */
+	/** Root folder for this run, for example src/evidence/ABC-123. */
 	outputDir?: string;
 	/** Environment name, appended to every artifact so two runs can coexist. */
 	env?: string;
@@ -39,7 +39,7 @@ class EvidenceReporter implements Reporter {
 	private entries: { test: TestCase; result: TestResult }[] = [];
 
 	constructor(options: EvidenceReporterOptions = {}) {
-		this.outputDir = options.outputDir ?? "evidence";
+		this.outputDir = options.outputDir ?? "src/evidence";
 		this.env = options.env ?? process.env.TEST_ENV ?? "";
 	}
 

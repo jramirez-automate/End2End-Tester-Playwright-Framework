@@ -27,7 +27,7 @@ export const config = {
 	/** Ticket keys this suite recognises, e.g. ABC-123. */
 	ticketPattern: new RegExp(process.env.TICKET_PATTERN ?? "^[A-Z][A-Z0-9]*-\\d+$"),
 
-	evidenceDir: process.env.EVIDENCE_DIR ?? "evidence",
+	evidenceDir: process.env.EVIDENCE_DIR ?? "src/evidence",
 
 	jira: {
 		baseUrl: (process.env.JIRA_BASE_URL ?? "").replace(/\/$/, ""),

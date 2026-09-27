@@ -1,5 +1,5 @@
 /**
- * Copy to pages/<Feature>Page.ts and export it from pages/index.ts.
+ * Copy to src/pages/<Feature>Page.ts and export it from src/pages/index.ts.
  * Keep selectors in the page object. Specs call methods and assert outcomes.
  */
 import { type Locator, type Page } from "@playwright/test";

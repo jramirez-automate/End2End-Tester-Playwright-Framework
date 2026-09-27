@@ -20,7 +20,7 @@ behaviour. Debugging guidance is in `README.md` → "Reading a failure" and
    the config guard blocks it, and you must not work around the guard.
    **Wait for explicit approval in this conversation before any run against a
    shared or production environment.**
-2. On failure, diagnose from the failing test's folder in `test-results/`, in
+2. On failure, diagnose from the failing test's folder in `src/test-results/`, in
    this order: the error message; `error-context.md`, which holds the page's
    accessibility snapshot at the moment of failure and usually shows why a
    locator missed; the failure screenshot; then `trace.zip`, only when those are
@@ -28,7 +28,7 @@ behaviour. Debugging guidance is in `README.md` → "Reading a failure" and
    see. Classify as bad selector, missing wait, environment flake, or real app bug.
 3. Fix specs or page objects, following the existing patterns: roles first,
    dialog-detached then toast, `e2eName()` for created data, cleanup in
-   `afterEach`. Reuse helpers from `utils/interactions.ts` rather than inlining
+   `afterEach`. Reuse helpers from `src/utils/interactions.ts` rather than inlining
    widget code. If you write the same interaction twice, report a `NEW HELPER`.
 4. Loop run, fix, run. About five iterations maximum. If it is still red, stop
    and report what you learned.

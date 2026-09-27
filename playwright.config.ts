@@ -2,8 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
-import { allureReporterOptions } from "./utils/allure-config";
-import { isWriteEnv, loadTestEnv, playwrightBaseURL } from "./utils/env";
+import { allureReporterOptions } from "./src/utils/allure-config";
+import { isWriteEnv, loadTestEnv, playwrightBaseURL } from "./src/utils/env";
 
 // TEST_ENV=demo|local|dev|staging|prod selects .env.<TEST_ENV>.
 // demo is the default and needs no credentials: it targets public sample apps.
@@ -25,9 +25,9 @@ const isHeaded = process.env.HEADED === "true";
 const authFile = ".auth/user.json";
 
 // EVIDENCE=true keeps a screenshot, a video, and a trace for every test and
-// writes evidence/<TICKET>/results-<env>.json for the publishing pipeline.
+// writes src/evidence/<TICKET>/results-<env>.json for the publishing pipeline.
 const wantEvidence = process.env.EVIDENCE === "true";
-const evidenceRoot = ticket ? `evidence/${ticket}` : "evidence";
+const evidenceRoot = ticket ? `src/evidence/${ticket}` : "src/evidence";
 
 function hostMsPlaywrightCache(): string | undefined {
 	const override = process.env.PLAYWRIGHT_HOST_BROWSERS_PATH;
@@ -72,7 +72,7 @@ function preferHostPlaywrightBrowsers(): void {
 preferHostPlaywrightBrowsers();
 
 export default defineConfig({
-	testDir: "./tests",
+	testDir: "./src/tests",
 	timeout: 90_000,
 	expect: { timeout: 10_000 },
 	globalTimeout:
@@ -83,7 +83,7 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 1,
 	workers: process.env.CI ? 1 : 2,
-	outputDir: wantEvidence ? `${evidenceRoot}/artifacts` : "test-results",
+	outputDir: wantEvidence ? `${evidenceRoot}/artifacts` : "src/test-results",
 	reporter: [
 		[
 			"html",

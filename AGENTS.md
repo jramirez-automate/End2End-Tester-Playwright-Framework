@@ -9,12 +9,12 @@ credentials, so a fresh clone runs green.
 
 ## Conventions
 
-- Import `test` and `expect` from `fixtures.ts`.
-- Specs live in `tests/<feature>/`. Trace a ticket with a tag: `{ tag: "@ABC-123" }`.
-- Selectors live in page objects under `pages/`. Prefer `getByRole` and
+- Import `test` and `expect` from `src/fixtures.ts`.
+- Specs live in `src/tests/<feature>/`. Trace a ticket with a tag: `{ tag: "@ABC-123" }`.
+- Selectors live in page objects under `src/pages/`. Prefer `getByRole` and
   `getByLabel`; scope a dialog with `getByRole("dialog")`. Put `.first()` on an
   `.or()` composition, not on each side.
-- Write flows run on write environments only (`WRITE_ENVS` in `utils/env.ts`).
+- Write flows run on write environments only (`WRITE_ENVS` in `src/utils/env.ts`).
   Production is `@smoke`. Never edit that guard to make a run possible.
 - Name created data with `e2eName()` and delete it in `test.afterEach` through
   `CleanupRegistry`.
@@ -29,7 +29,7 @@ credentials, so a fresh clone runs green.
 
 ```bash
 npm test                                            # demo suite, no credentials
-TEST_ENV=dev npx playwright test tests/<f>/<x>.spec.ts -g "<title>"
+TEST_ENV=dev npx playwright test src/tests/<f>/<x>.spec.ts -g "<title>"
 TEST_ENV=dev npx playwright test <spec> --retries=0 --trace=retain-on-failure  # debug loop
 TICKET=ABC-123 TEST_ENV=dev npx playwright test     # one ticket's tag
 TICKET=ABC-123 EVIDENCE=true npx playwright test    # evidence bundle
