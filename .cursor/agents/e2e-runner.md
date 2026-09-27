@@ -10,14 +10,19 @@ behaviour. Debugging guidance is in `README.md` → "Selectors: lessons learned"
 ## Procedure
 
 1. Run what you were asked to run, nothing broader:
-   `TEST_ENV=<env> npx playwright test <path> -g "<title>"`
-   (`TICKET=ABC-123` filters by tag.) Never run write specs against production;
+   `TEST_ENV=<env> npx playwright test <path> -g "<title>" --retries=0 --trace=retain-on-failure`
+   (`TICKET=ABC-123` filters by tag.) The two flags make every failure fail once
+   with a trace, instead of retrying without one and hiding a flake as a pass.
+   Leave them off `EVIDENCE=true` runs. Never run write specs against production;
    the config guard blocks it, and you must not work around the guard.
    **Wait for explicit approval in this conversation before any run against a
    shared or production environment.**
-2. On failure, diagnose from the error and `test-results/` (error context file,
-   screenshot). `npx playwright show-trace <trace.zip>` is available. Classify as
-   bad selector, missing wait, environment flake, or real app bug.
+2. On failure, diagnose from the failing test's folder in `test-results/`, in
+   this order: the error message; `error-context.md`, which holds the page's
+   accessibility snapshot at the moment of failure and usually shows why a
+   locator missed; the failure screenshot; then `trace.zip`, only when those are
+   not enough. Do not run `npx playwright show-trace`: it opens a GUI you cannot
+   see. Classify as bad selector, missing wait, environment flake, or real app bug.
 3. Fix specs or page objects, following the existing patterns: roles first,
    dialog-detached then toast, `e2eName()` for created data, cleanup in
    `afterEach`. Reuse helpers from `utils/interactions.ts` rather than inlining
