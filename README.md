@@ -291,7 +291,7 @@ flowchart TD
     E --> LIST["sanity: npx playwright test --list<br/>+ TICKET=ABC-123 filter shows exactly them"]
 
     subgraph RUNNER["🏃 e2e-runner agent"]
-        F["4 · Full-suite regression<br/>triage → fix → loop until green · then refactor (no assertion changes)"]
+        F["4 · Full-suite regression<br/>--retries=0 · trace on failure · triage from error-context.md<br/>→ fix → loop until green · then refactor (no assertion changes)"]
     end
 
     LIST --> F
@@ -378,6 +378,23 @@ npm run test:ui
 ```
 
 **Tip:** the first time you use UI mode (or after clearing `.auth/`), run **Run all** once so the `setup` project saves the login state (`.auth/user.json`). After that, running a single test uses that state. Test timeout is 90s so slower create/edit/delete flows don't time out in UI or headed mode.
+
+### Reading a failure
+
+By default a failing test retries once (twice in CI), and the trace and video are recorded only on that retry. That suits a suite run, but in a fix-and-rerun loop it doubles every run, leaves the first failure without a trace, and lets a flake pass on its retry. While debugging, turn both off:
+
+```bash
+TEST_ENV=dev npx playwright test tests/checkout/cart-checkout.spec.ts --retries=0 --trace=retain-on-failure
+```
+
+Each failing test gets a folder in `test-results/`. Read it in this order:
+
+1. **The error message** in the terminal.
+2. **`error-context.md`**: the page's accessibility snapshot at the moment of failure. It usually shows why a locator missed: the element had a different name, sat in a second dialog, or wasn't rendered yet.
+3. **The failure screenshot.**
+4. **`trace.zip`**, when the first three aren't enough: `npx playwright show-trace test-results/<test>/trace.zip` opens the step-by-step viewer.
+
+The `e2e-runner` agent follows the same order and flags, except it never opens `show-trace`, because that is a GUI it cannot see. Don't add these flags to `EVIDENCE=true` runs; evidence mode already records everything.
 
 ---
 

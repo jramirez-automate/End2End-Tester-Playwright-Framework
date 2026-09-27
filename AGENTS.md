@@ -30,6 +30,7 @@ credentials, so a fresh clone runs green.
 ```bash
 npm test                                            # demo suite, no credentials
 TEST_ENV=dev npx playwright test tests/<f>/<x>.spec.ts -g "<title>"
+TEST_ENV=dev npx playwright test <spec> --retries=0 --trace=retain-on-failure  # debug loop
 TICKET=ABC-123 TEST_ENV=dev npx playwright test     # one ticket's tag
 TICKET=ABC-123 EVIDENCE=true npx playwright test    # evidence bundle
 node scripts/publish.mjs all --ticket ABC-123 --dry-run

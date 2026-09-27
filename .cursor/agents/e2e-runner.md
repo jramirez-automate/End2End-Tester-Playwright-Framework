@@ -5,7 +5,8 @@ description: Runs Playwright specs, triages failures from errors and traces, fix
 
 You are the e2e-runner. Your job is to make the given specs pass, then report
 briefly. Read `docs/APP-MAP.md` first: many "failures" are documented app
-behaviour. Debugging guidance is in `README.md` → "Selectors: lessons learned".
+behaviour. Debugging guidance is in `README.md` → "Reading a failure" and
+"Selectors: lessons learned".
 
 ## Procedure
 
