@@ -18,7 +18,9 @@ import dotenv from "dotenv";
 
 const testEnv = process.env.TEST_ENV ?? "demo";
 const envFile = path.resolve(`.env.${testEnv}`);
-const fromFile = fs.existsSync(envFile) ? dotenv.parse(fs.readFileSync(envFile)).APP_SOURCE_DIR : undefined;
+const fromFile = fs.existsSync(envFile)
+	? dotenv.parse(fs.readFileSync(envFile)).APP_SOURCE_DIR
+	: undefined;
 const raw = (process.env.APP_SOURCE_DIR ?? fromFile ?? "").trim();
 
 if (!raw) {
@@ -28,13 +30,18 @@ if (!raw) {
 
 const dir = path.resolve(raw.replace(/^~(?=$|\/)/, process.env.HOME ?? "~"));
 if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
-	console.error(`APP_SOURCE_DIR: ${dir} is not a directory — fix it in .env.${testEnv} or unset it`);
+	console.error(
+		`APP_SOURCE_DIR: ${dir} is not a directory — fix it in .env.${testEnv} or unset it`,
+	);
 	process.exit(1);
 }
 
 const git = (...args) => {
 	try {
-		return execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+		return execFileSync("git", ["-C", dir, ...args], {
+			encoding: "utf8",
+			stdio: ["ignore", "pipe", "ignore"],
+		}).trim();
 	} catch {
 		return "";
 	}
@@ -49,6 +56,7 @@ const branch = git("rev-parse", "--abbrev-ref", "HEAD");
 const commit = git("log", "-1", "--format=%h %cs");
 const dirty = git("status", "--porcelain") ? ", uncommitted changes" : "";
 const behind = git("rev-list", "--count", "HEAD..@{upstream}");
-const upstream = behind && behind !== "0" ? `, ${behind} commit(s) behind its upstream as of the last fetch` : "";
+const upstream =
+	behind && behind !== "0" ? `, ${behind} commit(s) behind its upstream as of the last fetch` : "";
 
 console.log(`APP_SOURCE_DIR: ${dir} (${branch} @ ${commit}${dirty}${upstream})`);

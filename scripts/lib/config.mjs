@@ -42,7 +42,10 @@ export const config = {
 		artifactBaseUrl: process.env.GITHUB_ARTIFACT_URL ?? "",
 	},
 	confluence: {
-		baseUrl: (process.env.CONFLUENCE_BASE_URL ?? process.env.JIRA_BASE_URL ?? "").replace(/\/$/, ""),
+		baseUrl: (process.env.CONFLUENCE_BASE_URL ?? process.env.JIRA_BASE_URL ?? "").replace(
+			/\/$/,
+			"",
+		),
 		spaceId: process.env.CONFLUENCE_SPACE_ID ?? "",
 		spaceKey: process.env.CONFLUENCE_SPACE_KEY ?? "",
 		parentPageId: process.env.CONFLUENCE_PARENT_PAGE_ID ?? "",
@@ -117,9 +120,7 @@ export function assertTicket(ticket) {
 		throw new Error("No ticket given. Pass --ticket ABC-123 or set TICKET.");
 	}
 	if (!config.ticketPattern.test(ticket)) {
-		throw new Error(
-			`Ticket "${ticket}" does not match TICKET_PATTERN (${config.ticketPattern}).`,
-		);
+		throw new Error(`Ticket "${ticket}" does not match TICKET_PATTERN (${config.ticketPattern}).`);
 	}
 	return ticket;
 }

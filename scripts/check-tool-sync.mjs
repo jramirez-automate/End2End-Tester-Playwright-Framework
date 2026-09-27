@@ -24,7 +24,12 @@ const body = (file) => {
 };
 
 const listFiles = (dir) =>
-	fs.existsSync(dir) ? fs.readdirSync(dir).filter((name) => name.endsWith(".md")).sort() : [];
+	fs.existsSync(dir)
+		? fs
+				.readdirSync(dir)
+				.filter((name) => name.endsWith(".md"))
+				.sort()
+		: [];
 
 for (const kind of ["agents", "commands"]) {
 	const claudeDir = path.join(".claude", kind);
@@ -51,14 +56,18 @@ for (const kind of ["agents", "commands"]) {
 // Shared skills must be reachable from both tools.
 const sharedDir = path.join(".agents", "skills");
 const shared = fs.existsSync(sharedDir)
-	? fs.readdirSync(sharedDir).filter((name) => fs.existsSync(path.join(sharedDir, name, "SKILL.md")))
+	? fs
+			.readdirSync(sharedDir)
+			.filter((name) => fs.existsSync(path.join(sharedDir, name, "SKILL.md")))
 	: [];
 
 for (const name of shared) {
 	for (const tool of [".claude", ".cursor"]) {
 		const link = path.join(tool, "skills", name);
 		if (!fs.existsSync(link)) {
-			problems.push(`skills/${name}: not available to ${tool} (symlink it to ../../.agents/skills/${name})`);
+			problems.push(
+				`skills/${name}: not available to ${tool} (symlink it to ../../.agents/skills/${name})`,
+			);
 			continue;
 		}
 		if (!fs.existsSync(path.join(link, "SKILL.md"))) {

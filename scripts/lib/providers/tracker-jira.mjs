@@ -154,7 +154,9 @@ const EVIDENCE_HEADING = "Evidence";
  */
 export async function embedInDescription(ticket, uuids, { dryRun }) {
 	if (dryRun) {
-		log.plan(`embed ${uuids.size} media file(s) in the ${ticket} description under "${EVIDENCE_HEADING}"`);
+		log.plan(
+			`embed ${uuids.size} media file(s) in the ${ticket} description under "${EVIDENCE_HEADING}"`,
+		);
 		return;
 	}
 	const current = await readDescription(ticket);
@@ -162,7 +164,10 @@ export async function embedInDescription(ticket, uuids, { dryRun }) {
 	const at = content.findIndex(
 		(node) =>
 			node.type === "heading" &&
-			node.content?.map((part) => part.text ?? "").join("").trim() === EVIDENCE_HEADING,
+			node.content
+				?.map((part) => part.text ?? "")
+				.join("")
+				.trim() === EVIDENCE_HEADING,
 	);
 	const kept = at === -1 ? content : content.slice(0, at);
 	const body = adf.doc([
@@ -246,8 +251,7 @@ export async function cleanup(ticket, { dryRun, keepNames = [] }) {
 	}
 
 	for (const attachment of attachments) {
-		const named =
-			references.includes(attachment.id) || references.includes(attachment.filename);
+		const named = references.includes(attachment.id) || references.includes(attachment.filename);
 		if (named || keepNames.includes(attachment.filename)) continue;
 		if (!capture.test(attachment.filename)) {
 			guarded.push(`${attachment.filename} (not a capture artifact)`);

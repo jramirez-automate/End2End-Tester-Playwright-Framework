@@ -47,9 +47,21 @@ import * as testmgmt from "./lib/providers/testmgmt-zephyr.mjs";
 import * as chat from "./lib/providers/chat-webhook.mjs";
 
 const args = process.argv.slice(2);
-const VALUE_FLAGS = ["--ticket", "--summary", "--comment-id", "--only", "--target", "--page-id", "--plan", "--from", "--tc", "--files"];
+const VALUE_FLAGS = [
+	"--ticket",
+	"--summary",
+	"--comment-id",
+	"--only",
+	"--target",
+	"--page-id",
+	"--plan",
+	"--from",
+	"--tc",
+	"--files",
+];
 const command =
-	args.find((arg, index) => !arg.startsWith("-") && !VALUE_FLAGS.includes(args[index - 1])) ?? "all";
+	args.find((arg, index) => !arg.startsWith("-") && !VALUE_FLAGS.includes(args[index - 1])) ??
+	"all";
 const flag = (name) => {
 	const index = args.indexOf(`--${name}`);
 	return index === -1 ? undefined : args[index + 1];
@@ -112,7 +124,12 @@ const commentId = flag("comment-id");
 const target = confluenceTarget(flag("target"));
 const pageId = flag("page-id") ?? config.confluence.pageId;
 
-const trackerReady = config.tracker === "jira" ? jiraConfigured() : config.tracker === "github" ? githubConfigured() : false;
+const trackerReady =
+	config.tracker === "jira"
+		? jiraConfigured()
+		: config.tracker === "github"
+			? githubConfigured()
+			: false;
 const dryRun = config.dryRun || has("dry-run") || !trackerReady;
 
 const state = { links: [] };
@@ -213,7 +230,9 @@ async function cmdPrune(table) {
 	section(`Prune test plan attachments (target: ${target.name})`);
 	if (!wikiReady()) return;
 	if (!confluenceConfigured(target)) {
-		log.warn("pruning reads the live page, so it needs wiki credentials even for a dry run — skipping");
+		log.warn(
+			"pruning reads the live page, so it needs wiki credentials even for a dry run — skipping",
+		);
 		return;
 	}
 	const page = await wiki.resolvePage({ title: planTitle(), target, pageId });
@@ -272,7 +291,9 @@ async function cmdMarkPass(table) {
 		return;
 	}
 	// Titles may be filled into the plan after `cases` ran; the plan wins.
-	const plan = fs.existsSync(planFile(ticket, flag("plan"))) ? readPlan(planFile(ticket, flag("plan"))) : [];
+	const plan = fs.existsSync(planFile(ticket, flag("plan")))
+		? readPlan(planFile(ticket, flag("plan")))
+		: [];
 	const withTitles = {
 		...saved,
 		cases: saved.cases.map((entry) => ({
@@ -281,8 +302,13 @@ async function cmdMarkPass(table) {
 		})),
 	};
 	for (const env of table.environments) {
-		const recorded = await testmgmt.markResults({ state: withTitles, rows: table.rows, env }, { dryRun });
-		const missed = withTitles.cases.filter((entry) => !recorded.includes(entry.tc)).map((entry) => entry.tc);
+		const recorded = await testmgmt.markResults(
+			{ state: withTitles, rows: table.rows, env },
+			{ dryRun },
+		);
+		const missed = withTitles.cases
+			.filter((entry) => !recorded.includes(entry.tc))
+			.map((entry) => entry.tc);
 		log.ok(`${env}: ${recorded.length} result(s) recorded`);
 		if (missed.length) log.warn(`${env}: no automated result for ${missed.join(", ")}`);
 	}
@@ -303,11 +329,11 @@ async function cmdCycles(table) {
 		const envRows = table.rows.filter((row) => row.results[env]);
 		const status = envRows.some((row) => row.results[env].status === "Fail") ? "Fail" : "Pass";
 		const cycle = await testmgmt.createCycle({ ticket, env, status }, { dryRun });
-		await testmgmt.recordExecutions(
-			{ cycleKey: cycle.key, cases, rows: envRows, env },
-			{ dryRun },
-		);
-		state.links.push({ title: cycle.name, url: `${config.jira.baseUrl}/projects/${config.zephyr.projectKey}` });
+		await testmgmt.recordExecutions({ cycleKey: cycle.key, cases, rows: envRows, env }, { dryRun });
+		state.links.push({
+			title: cycle.name,
+			url: `${config.jira.baseUrl}/projects/${config.zephyr.projectKey}`,
+		});
 	}
 }
 
@@ -328,7 +354,9 @@ async function cmdNotify(table) {
 	// Only announce the environments that are worth announcing, and only on green.
 	const gated = config.notifyOnEnvs.filter((env) => table.environments.includes(env));
 	if (!gated.length) {
-		log.info(`none of NOTIFY_ON_ENVS (${config.notifyOnEnvs.join(", ")}) were tested — not notifying`);
+		log.info(
+			`none of NOTIFY_ON_ENVS (${config.notifyOnEnvs.join(", ")}) were tested — not notifying`,
+		);
 		return;
 	}
 	if (table.status !== "Pass") {
@@ -353,7 +381,9 @@ async function cmdCleanup(table) {
 		return;
 	}
 	if (!jiraConfigured()) {
-		log.warn("cleanup reads the live issue, so it needs tracker credentials even for a dry run — skipping");
+		log.warn(
+			"cleanup reads the live issue, so it needs tracker credentials even for a dry run — skipping",
+		);
 		return;
 	}
 	const keepNames = ["SUMMARY.md", ...referencedMedia(ticket, table.rows).map((e) => e.name)];
@@ -382,8 +412,10 @@ async function cmdBug() {
 	const parent = flag("from");
 	const tc = flag("tc");
 	const files = flag("files");
-	if (!parent) fail("bug needs --from <ticket under test>, plus --tc <TC-00N> or --files <a.png,b.webm>");
-	if (!tc && !files) fail("bug needs --tc <TC-00N> (an automated failure) or --files <names> (a manual finding)");
+	if (!parent)
+		fail("bug needs --from <ticket under test>, plus --tc <TC-00N> or --files <a.png,b.webm>");
+	if (!tc && !files)
+		fail("bug needs --tc <TC-00N> (an automated failure) or --files <names> (a manual finding)");
 	assertTicket(parent);
 	section(`Bug proof: ${ticket} ← ${parent} ${tc ?? "(manual finding)"}`);
 
@@ -394,9 +426,11 @@ async function cmdBug() {
 	} else {
 		const parentTable = loadTable(parent);
 		const row = parentTable.rows.find((candidate) => candidate.tc === tc);
-		if (!row) fail(`${tc} is not in ${parent}'s results (${parentTable.rows.map((r) => r.tc).join(", ")})`);
+		if (!row)
+			fail(`${tc} is not in ${parent}'s results (${parentTable.rows.map((r) => r.tc).join(", ")})`);
 		const media = failedMedia(parent, row);
-		if (!media.length) fail(`${parent} ${tc} ("${row.title}") has no *-FAILED media — did it fail?`);
+		if (!media.length)
+			fail(`${parent} ${tc} ("${row.title}") has no *-FAILED media — did it fail?`);
 		copies = media.map((entry) => ({ name: entry.name, file: path.join(dir, entry.name) }));
 		if (dryRun) {
 			copies.forEach((entry) => log.plan(`copy ${entry.name} → ${dir}/`));
@@ -409,11 +443,17 @@ async function cmdBug() {
 	}
 
 	if (config.tracker !== "jira") {
-		log.warn(`tracker "${config.tracker}" cannot host attachments — attach ${copies.map((c) => c.name).join(", ")} by hand`);
+		log.warn(
+			`tracker "${config.tracker}" cannot host attachments — attach ${copies.map((c) => c.name).join(", ")} by hand`,
+		);
 		return;
 	}
 	await jira.attach(ticket, copies, { dryRun });
-	const uuids = await jira.mediaUuidsByFilename(ticket, copies.map((c) => c.name), { dryRun });
+	const uuids = await jira.mediaUuidsByFilename(
+		ticket,
+		copies.map((c) => c.name),
+		{ dryRun },
+	);
 	await jira.embedInDescription(ticket, uuids, { dryRun });
 	await jira.linkIssues(ticket, parent, { dryRun });
 }

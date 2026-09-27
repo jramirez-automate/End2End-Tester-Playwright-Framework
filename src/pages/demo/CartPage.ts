@@ -31,7 +31,10 @@ export class CartPage extends BasePage {
 	async removeAll(): Promise<void> {
 		const remove = this.page.getByRole("button", { name: /^remove$/i });
 		for (let count = await remove.count(); count > 0; count = await remove.count()) {
-			await remove.first().click().catch(() => undefined);
+			await remove
+				.first()
+				.click()
+				.catch(() => undefined);
 		}
 	}
 }

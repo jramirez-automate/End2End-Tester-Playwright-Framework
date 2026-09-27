@@ -36,6 +36,14 @@
 		"publish:prune": "node scripts/publish.mjs prune",
 		"publish:bug": "node scripts/publish.mjs bug",
 		"check:tool-sync": "node scripts/check-tool-sync.mjs",
+		"lint": "eslint .",
+		"lint:fix": "eslint . --fix",
+		"format": "prettier --write \"**/*.{ts,mts,mjs,js,json,yml}\"",
+		"format:check": "prettier --check \"**/*.{ts,mts,mjs,js,json,yml}\"",
+		"scan:secrets": "node scripts/scan-secrets.js",
+		"scan:secrets:staged": "node scripts/scan-secrets.js --staged",
+		"scan:secrets:self-test": "node scripts/scan-secrets.js --self-test",
+		"prepare": "husky",
 		"app-source": "node scripts/app-source.mjs",
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p evals/tsconfig.json",
 		"eval": "vitest run --config evals/vitest.config.mts",
@@ -44,12 +52,28 @@
 	"devDependencies": {
 		"@playwright/test": "1.61.1",
 		"@types/node": "^20.19.43",
+		"@typescript-eslint/eslint-plugin": "^8.70.1",
+		"@typescript-eslint/parser": "^8.70.1",
 		"allure": "^3.18.0",
 		"allure-playwright": "~3.11.1",
 		"deepeval": "^0.9.20",
 		"dotenv": "^17.3.1",
+		"eslint": "^9.39.5",
+		"eslint-plugin-playwright": "^2.12.0",
+		"husky": "^9.1.7",
+		"lint-staged": "^15.5.2",
 		"ollama": "^0.6.3",
+		"prettier": "^3.9.9",
 		"typescript": "^5.8.3",
 		"vitest": "^4.1.11"
+	},
+	"lint-staged": {
+		"*.{ts,mts,mjs}": [
+			"eslint --fix --no-warn-ignored",
+			"prettier --write"
+		],
+		"*.{js,json,yml}": [
+			"prettier --write"
+		]
 	}
 }

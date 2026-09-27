@@ -60,11 +60,7 @@ export function isWriteEnv(testEnv = currentTestEnv()): boolean {
 	}
 	if (!WRITE_ENVS.includes(testEnv)) return false;
 	// Staging stays read-only in CI until writes are turned on deliberately.
-	if (
-		testEnv === "staging" &&
-		process.env.CI &&
-		process.env.E2E_STAGING_WRITES !== "true"
-	) {
+	if (testEnv === "staging" && process.env.CI && process.env.E2E_STAGING_WRITES !== "true") {
 		return false;
 	}
 	return true;

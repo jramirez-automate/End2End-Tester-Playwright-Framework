@@ -84,7 +84,8 @@ test.describe("Cart and checkout", { tag: "@DEMO-001" }, () => {
 			await cart.checkout();
 		});
 
-		await test.step("WHEN the shopper continues without filling in any details", () => checkout.continue());
+		await test.step("WHEN the shopper continues without filling in any details", () =>
+			checkout.continue());
 
 		await test.step('THEN the error "First Name is required" is shown', async () => {
 			await expect(checkout.errorMessage).toContainText(/first name is required/i);

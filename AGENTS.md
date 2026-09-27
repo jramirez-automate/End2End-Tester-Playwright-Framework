@@ -35,7 +35,12 @@ TICKET=ABC-123 TEST_ENV=dev npx playwright test     # one ticket's tag
 TICKET=ABC-123 EVIDENCE=true npx playwright test    # evidence bundle
 node scripts/publish.mjs all --ticket ABC-123 --dry-run
 npm run typecheck && npm run check:tool-sync
+npm run lint && npm run format:check && npm run scan:secrets
 ```
+
+The pre-commit hook (`.husky/pre-commit`) scans staged files for secrets, then
+lints and formats them. Never bypass it with `--no-verify`; fix the finding or
+the pattern in `scripts/scan-secrets.js`.
 
 **Ask before running against a shared or production environment.** Demo and local
 need no approval.

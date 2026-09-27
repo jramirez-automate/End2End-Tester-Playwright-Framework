@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -e
+node scripts/scan-secrets.js --staged
+npx lint-staged

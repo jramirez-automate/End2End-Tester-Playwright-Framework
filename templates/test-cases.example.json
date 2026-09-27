@@ -18,10 +18,7 @@
 			"tc": "TC-002",
 			"name": "Verify checkout refuses to continue without the shopper's details",
 			"precondition": "Signed in, with one product in the cart.",
-			"steps": [
-				"Open the cart and select Checkout",
-				"Leave every field empty and select Continue"
-			],
+			"steps": ["Open the cart and select Checkout", "Leave every field empty and select Continue"],
 			"expected": "An error reads \"First Name is required\" and the overview page does not open",
 			"test": "checkout rejects missing details"
 		}

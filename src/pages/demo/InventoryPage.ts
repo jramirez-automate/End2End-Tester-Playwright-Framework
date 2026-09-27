@@ -32,7 +32,9 @@ export class InventoryPage extends BasePage {
 	}
 
 	async addToCart(name: string) {
-		await this.item(name).getByRole("button", { name: /add to cart/i }).click();
+		await this.item(name)
+			.getByRole("button", { name: /add to cart/i })
+			.click();
 	}
 
 	async removeFromCart(name: string) {

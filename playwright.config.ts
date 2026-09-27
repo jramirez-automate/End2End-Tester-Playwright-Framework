@@ -100,7 +100,7 @@ export default defineConfig({
 			? ([["./evidence-reporter.ts", { outputDir: evidenceRoot, env: testEnv }]] as [
 					string,
 					{ outputDir: string; env: string },
-			  ][])
+				][])
 			: []),
 	],
 	use: {

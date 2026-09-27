@@ -17,7 +17,7 @@ async function call(endpoint, options = {}) {
 	return res.status === 204 ? undefined : res.json();
 }
 
-export async function createTestCases({ ticket, rows }, { dryRun }) {
+export async function createTestCases({ rows }, { dryRun }) {
 	const created = [];
 	for (const row of rows) {
 		if (dryRun) {
@@ -105,7 +105,12 @@ export async function createPlannedCases({ ticket, cases }, { dryRun }) {
 		const name = `${entry.tc} ${entry.name}`;
 		if (dryRun) {
 			log.plan(`create planned case "${name}" (${entry.steps.length} step(s))`);
-			created.push({ tc: entry.tc, key: `${config.zephyr.projectKey}-T?`, name, test: entry.test ?? "" });
+			created.push({
+				tc: entry.tc,
+				key: `${config.zephyr.projectKey}-T?`,
+				name,
+				test: entry.test ?? "",
+			});
 			continue;
 		}
 		const testCase = await call("/testcases", {
@@ -172,7 +177,9 @@ export async function markResults({ state, rows, env }, { dryRun }) {
 		if (!result) continue;
 		recorded.push(entry.tc);
 		if (dryRun) {
-			log.plan(`execution ${entry.key} (${entry.tc}) in ${state.cycleKey} on ${env} → ${result.status}`);
+			log.plan(
+				`execution ${entry.key} (${entry.tc}) in ${state.cycleKey} on ${env} → ${result.status}`,
+			);
 			continue;
 		}
 		await execute({

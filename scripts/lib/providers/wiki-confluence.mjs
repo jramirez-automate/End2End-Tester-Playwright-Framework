@@ -19,7 +19,11 @@ const headers = () => ({ ...auth(), "Content-Type": "application/json" });
 const wiki = () => `${config.confluence.baseUrl}/wiki`;
 
 const escape = (value) =>
-	String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+	String(value)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;");
 
 async function findByTitle(title, target) {
 	const url = `${wiki()}/api/v2/pages?space-id=${target.spaceId}&title=${encodeURIComponent(title)}&status=current`;
@@ -92,8 +96,12 @@ export function buildStorage({ ticket, summary, environments, rows, status, link
 
 export async function publishPage({ title, storage, target, pageId }, { dryRun }) {
 	if (dryRun) {
-		const where = pageId ? `page ${pageId}` : `space ${target.spaceKey || target.spaceId || "?"} (${target.name})`;
-		log.plan(`publish wiki page "${title}" to ${where} (${storage.length} chars of storage format)`);
+		const where = pageId
+			? `page ${pageId}`
+			: `space ${target.spaceKey || target.spaceId || "?"} (${target.name})`;
+		log.plan(
+			`publish wiki page "${title}" to ${where} (${storage.length} chars of storage format)`,
+		);
 		return { id: "dry-run", title, _links: {} };
 	}
 

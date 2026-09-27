@@ -1,11 +1,6 @@
 import fs from "fs";
 import path from "path";
-import type {
-	FullResult,
-	Reporter,
-	TestCase,
-	TestResult,
-} from "@playwright/test/reporter";
+import type { FullResult, Reporter, TestCase, TestResult } from "@playwright/test/reporter";
 
 interface EvidenceReporterOptions {
 	/** Root folder for this run, for example src/evidence/ABC-123. */
@@ -61,16 +56,12 @@ class EvidenceReporter implements Reporter {
 		this.entries.forEach(({ test, result }, index) => {
 			const skipped = result.status === "skipped";
 			const failed = !skipped && result.status !== "passed";
-			const base = uniqueName(
-				`${slug(test.title)}${envSuffix}${failed ? "-FAILED" : ""}`,
-				used,
-			);
+			const base = uniqueName(`${slug(test.title)}${envSuffix}${failed ? "-FAILED" : ""}`, used);
 			const media: string[] = [];
 
 			const screenshots: { fromBody: boolean; ext: string; path?: string; body?: Buffer }[] = [];
 			for (const attachment of result.attachments) {
-				const fromBody =
-					!attachment.path && attachment.body != null && attachment.body.length > 0;
+				const fromBody = !attachment.path && (attachment.body?.length ?? 0) > 0;
 				const fromPath = !!attachment.path && fs.existsSync(attachment.path);
 				if (!fromBody && !fromPath) continue;
 
@@ -125,9 +116,7 @@ class EvidenceReporter implements Reporter {
 				status: skipped ? "Skipped" : failed ? "Fail" : "Pass",
 				durationMs: result.duration,
 				media,
-				...(failed && result.error?.message
-					? { error: firstLine(result.error.message) }
-					: {}),
+				...(failed && result.error?.message ? { error: firstLine(result.error.message) } : {}),
 			});
 		});
 
@@ -170,7 +159,10 @@ function uniqueName(base: string, used: Set<string>): string {
 }
 
 function firstLine(message: string): string {
-	return message.replace(/\u001b\[[0-9;]*m/g, "").split("\n")[0].slice(0, 300);
+	return message
+		.replace(/\u001b\[[0-9;]*m/g, "")
+		.split("\n")[0]
+		.slice(0, 300);
 }
 
 export default EvidenceReporter;
