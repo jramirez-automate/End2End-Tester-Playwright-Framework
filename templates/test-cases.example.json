@@ -1,0 +1,29 @@
+{
+	"$comment": "Copy to evidence/<TICKET>/test-cases.json and fill from the ticket's acceptance criteria BEFORE writing any spec. `publish.mjs cases` creates these in test management; `mark-pass` later records the run against them. `test` is the exact Playwright test title, filled in once the spec exists. Steps are user actions a manual tester can follow: no selectors, no file paths. The expected result is one observable outcome.",
+	"cases": [
+		{
+			"tc": "TC-001",
+			"name": "Verify a cart can be checked out to a confirmation",
+			"precondition": "Signed in as the automation user with an empty cart.",
+			"steps": [
+				"Add the Sauce Labs Backpack to the cart",
+				"Open the cart and select Checkout",
+				"Enter a first name, last name and postal code, then select Continue",
+				"Select Finish"
+			],
+			"expected": "The confirmation page reads \"Thank you for your order!\"",
+			"test": "a cart can be checked out to a confirmation"
+		},
+		{
+			"tc": "TC-002",
+			"name": "Verify checkout refuses to continue without the shopper's details",
+			"precondition": "Signed in, with one product in the cart.",
+			"steps": [
+				"Open the cart and select Checkout",
+				"Leave every field empty and select Continue"
+			],
+			"expected": "An error reads \"First Name is required\" and the overview page does not open",
+			"test": "checkout rejects missing details"
+		}
+	]
+}

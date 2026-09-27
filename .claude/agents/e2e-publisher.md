@@ -18,13 +18,16 @@ invent results; everything comes from `evidence/<key>/results-<env>.json`.
    `node scripts/publish.mjs all --ticket <key> --summary "<one line>"`
    Providers that are set to `none`, or missing credentials, are skipped by
    design. Do not add credentials yourself.
-3. **For every failed test case, raise a bug** and give it the same proof:
-   - Create the bug in the configured tracker, linked to the ticket under test.
-   - Copy that case's `*-FAILED.png` and `*-FAILED.webm` into
-     `evidence/<BUG-KEY>/`.
-   - `node scripts/publish.mjs attach --ticket <BUG-KEY>` then
-     `node scripts/publish.mjs comment --ticket <BUG-KEY>`, so the media is
-     embedded in the bug, not only attached to the parent ticket.
+   When `evidence/<key>/zephyr.json` exists (the cases were planned with
+   `publish.mjs cases`), `all` records the run against those cases with
+   `mark-pass`; otherwise `cycles` creates cases from the run. Report any
+   "no automated result" or "no planned case" warnings.
+3. **For every failed test case, raise a bug** and give it the same proof.
+   Create the bug in the configured tracker, then:
+   `node scripts/publish.mjs bug --ticket <BUG-KEY> --from <key> --tc <TC-00N> --dry-run`
+   and, once the plan looks right, the same without `--dry-run`. It copies the
+   case's `*-FAILED` media into `evidence/<BUG-KEY>/`, attaches it, embeds it in
+   the bug's description, and links the bug to the ticket under test.
    A bug with no evidence on it is an incomplete bug.
 4. Post the links once, in one place: the publish run collects the wiki page and
    the test cycles and puts them in a single comment. Do not scatter them across
@@ -35,8 +38,9 @@ invent results; everything comes from `evidence/<key>/results-<env>.json`.
 ## Rules
 
 - Never publish a bundle whose media has not been verified by the evidence step.
-- Never delete an attachment by hand. `publish.mjs cleanup` keeps anything it
-  did not upload and reports what it kept.
+- Never delete an attachment by hand. `publish.mjs cleanup` (ticket) and
+  `publish.mjs prune` (wiki page) keep anything they did not upload and report
+  what they kept. Both read live data, so they need credentials even to dry-run.
 - Credentials live in `.env.publish` only. Never write them into a tracked file
   or into a comment.
 
@@ -44,7 +48,7 @@ invent results; everything comes from `evidence/<key>/results-<env>.json`.
 
 ```
 Dry run: <what it planned>
-Published: attach <n> · comment <id> · plan <url> · cycles <keys> · chat <sent|skipped>
+Published: attach <n> · comment <id> · plan <url> · cycles|mark-pass <keys> · chat <sent|skipped>
 Bugs raised: <KEY — one line — evidence attached y/n> (or "none")
 Skipped: <provider: why>
 ```

@@ -84,10 +84,15 @@ see that the edges were deliberate.
 ## In this repo
 
 - The table is the numbered checklist `/e2e-ticket` step 1 asks for — put it
-  on the ticket (or `evidence/<KEY>/test-cases.md`) before any spec is written.
+  on the ticket before any spec is written. To create the cases in test
+  management up front, also write it as `evidence/<KEY>/test-cases.json`
+  (`templates/test-cases.example.json`) and run
+  `node scripts/publish.mjs cases --ticket <KEY> --dry-run`, then without
+  `--dry-run`. Each case's `test` field is the Playwright test title, filled in
+  once the spec exists; `mark-pass` uses it to record the run against the case.
 - Each automated case becomes one test: the title is the case name without
   "Verify", and its `test.step()` titles follow the case's steps
   (`e2e-testing-patterns` → Readable steps; `api-testing` for API cases).
-  `publish.mjs cycles` creates the test-management cases from those titles, so
-  a vague title becomes a vague case.
+  With no plan, `publish.mjs cycles` creates the test-management cases from
+  those titles after the run, so a vague title becomes a vague case.
 - Manual-only cases and their reasons go in `COVERAGE.md` and the final report.

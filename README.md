@@ -58,8 +58,10 @@ The `e2e-explorer` agent traces route → components → selectors so specs are 
 | Source | When |
 | --- | --- |
 | `docs/APP-MAP.md` | the route or widget driver is already recorded — use it and stop looking |
-| An app checkout, via `APP_SOURCE_DIR` | you have the source on this machine; read it surgically, never wholesale |
+| An app checkout, via `APP_SOURCE_DIR` | you have the source on this machine; read it surgically, never wholesale. `npm run -s app-source` prints the directory, branch and commit it resolves to |
 | The running app, via the Playwright MCP server | there is no source — snapshot the page and read the accessibility tree |
+
+Set `APP_SOURCE_DIR` in `.env.<environment>` (or your shell) to a checkout on the branch deployed to that environment. The explorer runs `npm run -s app-source` before reading it and reports which source it traced (the map, a checkout at a named commit, or the running app), so a reviewer knows how far to trust the selectors.
 
 Nothing is vendored into this repo and nothing is built here, so the suite stays small and the app stays the source of truth.
 
@@ -159,13 +161,17 @@ node scripts/publish.mjs all --ticket ABC-123 --summary "Checkout regression"
 | Command | What it does |
 | --- | --- |
 | `summary` | Write `SUMMARY.md` from the run results |
-| `attach` | Upload the media the results table references, skipping anything already attached |
+| `attach` | Upload the media the results table references, skipping anything already attached. `--traces` adds each case's trace, `--only <text>` narrows by filename |
 | `comment` | Post the results table with media **embedded inline**, not linked |
-| `plan` | Create or update the test plan page on the wiki |
-| `cycles` | Create test cases, a cycle per environment, and an execution per case |
+| `plan` | Create or update the wiki test plan, with each case's media uploaded and embedded. `--target <name>` picks a destination, `--page-id` updates a known page, `--skip-media` republishes the body only |
+| `cases` | Create planned test cases and a cycle from `evidence/<key>/test-cases.json`, **before** any spec exists |
+| `mark-pass` | Record the run's results against those planned cases |
+| `cycles` | No plan: create cases from the run, a cycle per environment, and an execution per case |
 | `notify` | Post a chat card, gated to `NOTIFY_ON_ENVS` and a fully green run |
-| `cleanup` | Delete attachments no comment references, keeping anything it didn't upload |
-| `all` | The whole sequence |
+| `cleanup` | Delete ticket attachments no comment or description references, keeping anything it didn't upload |
+| `prune` | Delete wiki page attachments the current table no longer uses, keeping anything it didn't upload |
+| `bug` | Give a bug its own proof: copy a failed case's media, attach it, embed it in the description, link the bug to the ticket |
+| `all` | `summary`, `attach`, `plan`, `mark-pass` (or `cycles`), `comment`, `notify` |
 
 Providers: tracker `jira` or `github`, wiki `confluence`, test management `zephyr`, chat `teams` or `slack`. Swapping one means writing a single adapter in `scripts/lib/providers/` — the CLI and the evidence format don't change.
 
@@ -174,16 +180,35 @@ Two details worth knowing:
 - **Inline media needs ADF.** A markdown comment can only *link* an attachment. The Jira adapter resolves each attachment to its media-services id and builds real media nodes, so thumbnails and playable video render inside the results table.
 - **Cleanup is guarded.** A file is only a delete candidate when this pipeline uploaded it, it carries a capture-artifact extension, and no comment references it. Anything else is kept and reported, so source material someone attached by hand never disappears.
 
-With no credentials every command runs as a **dry run**, which is also how you demo or review the pipeline safely.
+- **Planned cases come first.** Write the ticket's cases as `evidence/<key>/test-cases.json` (start from `templates/test-cases.example.json`) and run `cases` before any spec exists. Each case gets numbered steps and one expected result, and the cycle holds a "Not Executed" execution per case, the record that the cases predate the run. Once a spec exists, put its test title in the case's `test` field; `all` then records results with `mark-pass` instead of creating new cases. The plan holds cases, never results.
+- **Wiki destinations are configuration.** `--target release` reads `CONFLUENCE_RELEASE_SPACE_ID`, `_SPACE_KEY` and `_PARENT_PAGE_ID`, falling back to the default space for anything unset.
 
-**Every bug raised from a failure carries its own proof:** link it to the ticket under test, copy that case's `*-FAILED.png` / `*-FAILED.webm` into `evidence/<BUG-KEY>/`, then attach and comment on the bug so the media is embedded there. Proof left only on the parent ticket is incomplete.
+With no credentials every command runs as a **dry run**, which is also how you demo or review the pipeline safely. `cleanup` and `prune` are the exception: they read the live issue or page, so they skip without credentials.
+
+**Every bug raised from a failure carries its own proof.** Create the bug, then:
+
+```bash
+node scripts/publish.mjs bug --ticket BUG-7 --from ABC-123 --tc TC-003 --dry-run
+node scripts/publish.mjs bug --ticket BUG-7 --from ABC-123 --tc TC-003
+```
+
+It copies that case's `*-FAILED.png` / `*-FAILED.webm` into `evidence/BUG-7/`, attaches them, embeds them in the bug's description under an **Evidence** heading (replaced, not duplicated, on a re-run), and links the bug to `ABC-123`. For a manual finding, save the media in `evidence/BUG-7/` and pass `--files a.png,b.webm` instead of `--tc`.
 
 ## Reporting
 
 Three reporters, all wired in `playwright.config.ts`:
 
 - **HTML** — `npm run report` (or `evidence/<TICKET>/report/` in evidence mode).
-- **Allure** — results land in `allure-results/`; `npm run allure` generates and opens the report. Good for trends across runs and for CI dashboards. Generating the HTML needs the bundled Allure CLI (`allure-commandline`, which needs Java); the results themselves need neither.
+- **Allure Report 3** — the run report: statuses, retries, trend, severity and failure categories. Its command-line tool is Node, so there is **no Java** anywhere. Results land in `allure-results/` (`ALLURE=false` skips them for one run).
+
+  ```bash
+  npm run report:allure            # generate, then serve on http://localhost:8080
+  npm run report:allure:generate   # generate only (CI)
+  npm run report:allure:gate       # advisory pass-rate gate
+  npm run allure:clean             # drop allure-results/ before a fresh full run
+  ```
+
+  `utils/allure-config.ts` turns `@ABC-123` tags into issue links (set `ALLURE_JIRA_BROWSE_URL`), groups and ranks tests by the `STORIES` map, buckets failures by shape, and names the environment, `APP_VERSION` and commit the run describes. `allurerc.mjs` builds the per-test report and the dashboard in one pass and appends to `docs/allure-history.jsonl`, which is committed so the trend survives a fresh clone. Declare failures that are already raised defects under `resolutions` there, never in `known-issues.json`.
 - **Evidence** — only in evidence mode, described above.
 
 ## QA artifact evals
@@ -250,7 +275,7 @@ With no credentials configured for an environment, the setup step saves an empty
 
 This repo ships `.github/workflows/e2e.yml`.
 
-- **Push and pull request** — typecheck, `check:tool-sync`, and the **full demo suite**. No secrets, so the result means something on a fresh fork. The HTML report and `allure-results/` are uploaded as artifacts.
+- **Push and pull request** — typecheck, `check:tool-sync`, and the **full demo suite**. No secrets, so the result means something on a fresh fork. The Playwright HTML report and the generated Allure report are uploaded as artifacts.
 - **On demand** — run against your own environment from the **Actions** tab (`workflow_dispatch`), optionally with a ticket key, which switches on evidence capture and uploads the bundle. Production stays `@smoke` through the config guard regardless of what you select.
 - **Required secrets** for your environments: `BASE_URL`, `E2E_USERNAME`, `E2E_PASSWORD`. Optional: `E2E_SITE_NAME`, `E2E_LOGIN_PATH`.
 

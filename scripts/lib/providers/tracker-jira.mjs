@@ -137,11 +137,91 @@ export async function comment(ticket, body, { dryRun, commentId }) {
 	return res.json();
 }
 
+async function readDescription(ticket) {
+	const res = await fetch(`${api()}/issue/${encodeURIComponent(ticket)}?fields=description`, {
+		headers: authHeaders(),
+	});
+	await expectOk(res, `Read ${ticket} description`);
+	return (await res.json()).fields?.description ?? null;
+}
+
+const EVIDENCE_HEADING = "Evidence";
+
 /**
- * Delete attachments no comment references.
+ * Render media inside the issue description, under a trailing "Evidence"
+ * heading. Everything from that heading down is replaced, so re-running
+ * refreshes the proof instead of stacking a second copy under the first.
+ */
+export async function embedInDescription(ticket, uuids, { dryRun }) {
+	if (dryRun) {
+		log.plan(`embed ${uuids.size} media file(s) in the ${ticket} description under "${EVIDENCE_HEADING}"`);
+		return;
+	}
+	const current = await readDescription(ticket);
+	const content = [...(current?.content ?? [])];
+	const at = content.findIndex(
+		(node) =>
+			node.type === "heading" &&
+			node.content?.map((part) => part.text ?? "").join("").trim() === EVIDENCE_HEADING,
+	);
+	const kept = at === -1 ? content : content.slice(0, at);
+	const body = adf.doc([
+		...kept,
+		adf.heading(3, EVIDENCE_HEADING),
+		...[...uuids.entries()].flatMap(([name, uuid]) => [
+			adf.paragraph(adf.text(name)),
+			adf.mediaSingle(uuid),
+		]),
+	]);
+	const res = await fetch(`${api()}/issue/${encodeURIComponent(ticket)}`, {
+		method: "PUT",
+		headers: { ...authHeaders(), "Content-Type": "application/json" },
+		body: JSON.stringify({ fields: { description: body } }),
+	});
+	await expectOk(res, `Update ${ticket} description`);
+	log.ok(`embedded ${uuids.size} media file(s) in the ${ticket} description`);
+}
+
+/** Link a bug to the ticket under test, once. */
+export async function linkIssues(bug, parent, { dryRun }) {
+	const type = config.jira.bugLinkType;
+	if (dryRun) {
+		log.plan(`link ${bug} → ${parent} ("${type}")`);
+		return;
+	}
+	const res = await fetch(`${api()}/issue/${encodeURIComponent(bug)}?fields=issuelinks`, {
+		headers: authHeaders(),
+	});
+	await expectOk(res, `Read ${bug} links`);
+	const links = (await res.json()).fields?.issuelinks ?? [];
+	const already = links.some(
+		(link) => link.inwardIssue?.key === parent || link.outwardIssue?.key === parent,
+	);
+	if (already) {
+		log.info(`${bug} is already linked to ${parent}`);
+		return;
+	}
+	const post = await fetch(`${api()}/issueLink`, {
+		method: "POST",
+		headers: { ...authHeaders(), "Content-Type": "application/json" },
+		body: JSON.stringify({
+			type: { name: type },
+			inwardIssue: { key: bug },
+			outwardIssue: { key: parent },
+		}),
+	});
+	await expectOk(post, `Link ${bug} to ${parent}`);
+	log.ok(`linked ${bug} → ${parent} ("${type}")`);
+}
+
+/**
+ * Delete attachments that neither a comment nor the description references.
  *
  * Guarded on purpose: only files this pipeline could have produced are ever
  * candidates. Source material someone else attached is reported and kept.
+ * With no embedded media anywhere on the issue, nothing is deleted at all:
+ * that state means the results comment has not been posted yet, not that
+ * every capture is an orphan.
  */
 export async function cleanup(ticket, { dryRun, keepNames = [] }) {
 	const attachments = await listAttachments(ticket);
@@ -149,15 +229,26 @@ export async function cleanup(ticket, { dryRun, keepNames = [] }) {
 		headers: authHeaders(),
 	});
 	await expectOk(res, `Read comments on ${ticket}`);
-	const comments = JSON.stringify((await res.json()).comments ?? []);
+	const references =
+		JSON.stringify((await res.json()).comments ?? []) +
+		JSON.stringify(await readDescription(ticket));
 
 	const capture = /\.(png|jpe?g|webm|zip|md)$/i;
 	const deleted = [];
 	const guarded = [];
 
+	if (!references.includes('"type":"media"')) {
+		attachments.forEach((attachment) =>
+			guarded.push(`${attachment.filename} (no embedded media on ${ticket} yet)`),
+		);
+		guarded.forEach((entry) => log.warn(`kept ${entry}`));
+		return { deleted, guarded };
+	}
+
 	for (const attachment of attachments) {
-		const referenced = comments.includes(attachment.id) || comments.includes(attachment.filename);
-		if (referenced || keepNames.includes(attachment.filename)) continue;
+		const named =
+			references.includes(attachment.id) || references.includes(attachment.filename);
+		if (named || keepNames.includes(attachment.filename)) continue;
 		if (!capture.test(attachment.filename)) {
 			guarded.push(`${attachment.filename} (not a capture artifact)`);
 			continue;
@@ -166,6 +257,8 @@ export async function cleanup(ticket, { dryRun, keepNames = [] }) {
 			guarded.push(`${attachment.filename} (uploaded by someone else)`);
 			continue;
 		}
+		const uuid = await mediaUuid(attachment.id).catch(() => undefined);
+		if (uuid && references.includes(uuid)) continue;
 		if (dryRun) {
 			log.plan(`delete attachment ${attachment.filename}`);
 			deleted.push(attachment.filename);

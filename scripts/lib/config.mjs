@@ -33,6 +33,8 @@ export const config = {
 		baseUrl: (process.env.JIRA_BASE_URL ?? "").replace(/\/$/, ""),
 		email: process.env.JIRA_EMAIL ?? "",
 		apiToken: process.env.JIRA_API_TOKEN ?? "",
+		/** Issue link type used by `bug`, as named in the Jira project. */
+		bugLinkType: process.env.JIRA_BUG_LINK_TYPE ?? "Relates",
 	},
 	github: {
 		repo: process.env.GITHUB_REPOSITORY ?? "",
@@ -44,6 +46,10 @@ export const config = {
 		spaceId: process.env.CONFLUENCE_SPACE_ID ?? "",
 		spaceKey: process.env.CONFLUENCE_SPACE_KEY ?? "",
 		parentPageId: process.env.CONFLUENCE_PARENT_PAGE_ID ?? "",
+		/** Target used when --target is not passed. */
+		defaultTarget: (process.env.CONFLUENCE_TARGET ?? "default").toLowerCase(),
+		/** Update this page instead of looking the plan up by title. */
+		pageId: process.env.CONFLUENCE_PAGE_ID ?? "",
 	},
 	zephyr: {
 		apiUrl: process.env.ZEPHYR_API_URL ?? "https://api.zephyrscale.smartbear.com/v2",
@@ -70,12 +76,26 @@ export function githubConfigured() {
 	return Boolean(config.github.repo && config.github.token);
 }
 
-export function confluenceConfigured() {
+/**
+ * A named wiki destination. `--target release` reads CONFLUENCE_RELEASE_SPACE_ID,
+ * CONFLUENCE_RELEASE_SPACE_KEY and CONFLUENCE_RELEASE_PARENT_PAGE_ID; any of
+ * those left unset falls back to the default target's value.
+ */
+export function confluenceTarget(name = config.confluence.defaultTarget) {
+	const target = String(name).toLowerCase();
+	const read = (field) =>
+		target === "default" ? "" : (process.env[`CONFLUENCE_${target.toUpperCase()}_${field}`] ?? "");
+	return {
+		name: target,
+		spaceId: read("SPACE_ID") || config.confluence.spaceId,
+		spaceKey: read("SPACE_KEY") || config.confluence.spaceKey,
+		parentPageId: read("PARENT_PAGE_ID") || config.confluence.parentPageId,
+	};
+}
+
+export function confluenceConfigured(target = confluenceTarget()) {
 	return Boolean(
-		config.confluence.baseUrl &&
-			config.confluence.spaceId &&
-			config.jira.email &&
-			config.jira.apiToken,
+		config.confluence.baseUrl && target.spaceId && config.jira.email && config.jira.apiToken,
 	);
 }
 

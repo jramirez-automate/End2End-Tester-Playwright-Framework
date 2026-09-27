@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { allureReporterOptions } from "./utils/allure-config";
 import { isWriteEnv, loadTestEnv, playwrightBaseURL } from "./utils/env";
 
 // TEST_ENV=demo|local|dev|staging|prod selects .env.<TEST_ENV>.
@@ -91,17 +92,9 @@ export default defineConfig({
 				open: "never",
 			},
 		],
-		[
-			"allure-playwright",
-			{
-				resultsDir: "allure-results",
-				environmentInfo: {
-					test_env: testEnv,
-					base_url: baseURL,
-					node: process.version,
-				},
-			},
-		],
+		...(process.env.ALLURE === "false"
+			? []
+			: ([["allure-playwright", allureReporterOptions(testEnv)]] as [string, object][])),
 		["list"],
 		...(wantEvidence
 			? ([["./evidence-reporter.ts", { outputDir: evidenceRoot, env: testEnv }]] as [
