@@ -18,6 +18,8 @@ deployed app over HTTP; there is no application source here. Full contract:
   Production runs `@smoke`. Never edit that guard to make a run possible.
 - Name every record a test creates with `e2eName()` and delete it in
   `test.afterEach` through `CleanupRegistry`, which runs last in, first out.
+- API specs (`*.api.spec.ts`) use the `api` / `anonApi` fixtures and the helpers
+  in `src/utils/api.ts`; start from `templates/api.spec.template.ts`.
 - Look before you build: `docs/APP-MAP.md` → Navigation index for "how do I
   reach page X", Helpers index and `src/utils/interactions.ts` for "is there already
   a driver for this widget". Write the same interaction twice and extract it.

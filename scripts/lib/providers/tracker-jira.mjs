@@ -97,7 +97,7 @@ export function buildCommentBody({ ticket, environments, rows, uuids, links }) {
 				if (!result) return adf.cell(adf.paragraph(adf.text("—")));
 				const media = (result.media ?? [])
 					.filter((name) => uuids.has(name))
-					.map((name) => adf.mediaSingle(uuids.get(name)));
+					.map((name) => adf.mediaFor(name, uuids.get(name)));
 				return adf.cell([
 					adf.paragraph(adf.text(STATUS_ICON[result.status] ?? result.status)),
 					...media,
@@ -175,7 +175,7 @@ export async function embedInDescription(ticket, uuids, { dryRun }) {
 		adf.heading(3, EVIDENCE_HEADING),
 		...[...uuids.entries()].flatMap(([name, uuid]) => [
 			adf.paragraph(adf.text(name)),
-			adf.mediaSingle(uuid),
+			adf.mediaFor(name, uuid),
 		]),
 	]);
 	const res = await fetch(`${api()}/issue/${encodeURIComponent(ticket)}`, {
@@ -238,7 +238,7 @@ export async function cleanup(ticket, { dryRun, keepNames = [] }) {
 		JSON.stringify((await res.json()).comments ?? []) +
 		JSON.stringify(await readDescription(ticket));
 
-	const capture = /\.(png|jpe?g|webm|zip|md)$/i;
+	const capture = /\.(png|jpe?g|webm|zip|md|json)$/i;
 	const deleted = [];
 	const guarded = [];
 

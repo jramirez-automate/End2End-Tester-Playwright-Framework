@@ -9,6 +9,10 @@ the proving moment of the video. A passing test whose media shows a blank page,
 a spinner, the wrong scroll position, a closed dialog, or an unrelated screen is
 **invalid evidence**. Fix the capture before publishing anything.
 
+API cases have no screen. Their evidence is the `<test>-<env>-response.json`
+written from `readBody()`: it must show the request, status and body that the
+case's assertion is about. An API case with no response file is incomplete.
+
 ## While writing the spec
 
 Playwright's default end-of-test screenshot is the final viewport, so frame the

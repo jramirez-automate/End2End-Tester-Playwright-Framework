@@ -18,6 +18,10 @@ credentials, so a fresh clone runs green.
   Production is `@smoke`. Never edit that guard to make a run possible.
 - Name created data with `e2eName()` and delete it in `test.afterEach` through
   `CleanupRegistry`.
+- API specs are `src/tests/<feature>/<name>.api.spec.ts`, beside the feature's UI
+  spec. Call the API through the `api` / `anonApi` fixtures, never the built-in
+  `request` fixture, and read bodies with `readBody()` so each case carries its
+  response as evidence. Details: the `api-testing` skill.
 - Author one test at a time. Run it alone. The failure that counts is the
   assertion of user-visible behaviour, not a setup error.
 - Check `docs/APP-MAP.md` before adding a route or a widget helper, and record

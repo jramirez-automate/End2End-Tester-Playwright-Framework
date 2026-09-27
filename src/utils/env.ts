@@ -18,6 +18,8 @@ export const DEMO_DEFAULTS: Record<string, string> = {
 	E2E_USERNAME: "standard_user",
 	E2E_PASSWORD: "secret_sauce",
 	TODO_APP_URL: "https://demo.playwright.dev/todomvc",
+	// Public sample REST API. Writes are faked: it answers 201 and stores nothing.
+	API_BASE_URL: "https://jsonplaceholder.typicode.com/",
 };
 
 export function currentTestEnv(): string {

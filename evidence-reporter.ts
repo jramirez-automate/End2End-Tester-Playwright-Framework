@@ -83,6 +83,17 @@ class EvidenceReporter implements Reporter {
 					continue;
 				}
 
+				// API cases have no screen: the recorded response is their proof.
+				if (attachment.contentType === "application/json") {
+					const n = media.filter((entry) => entry.includes("-response")).length;
+					const name = `${base}-response${n ? `-${n + 1}` : ""}.json`;
+					const dest = path.join(this.outputDir, name);
+					if (fromPath) fs.copyFileSync(attachment.path!, dest);
+					else fs.writeFileSync(dest, attachment.body!);
+					media.push(name);
+					continue;
+				}
+
 				let name: string | undefined;
 				if (attachment.name === "video") name = `${base}${ext}`;
 				else if (attachment.name === "trace") name = `${base}-trace${ext}`;

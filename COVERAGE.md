@@ -4,6 +4,7 @@ Newest first. One row per ticket, added once its specs are green.
 
 | Ticket | Area | Specs | Environments | Notes |
 | --- | --- | --- | --- | --- |
+| DEMO-003 | Posts API | `src/tests/posts/posts.api.spec.ts` | demo | API example: `@smoke` reads, a 404, a create with cleanup. |
 | DEMO-002 | Todo list | `src/tests/todo/todo-list.spec.ts` | demo | Public TodoMVC sample. No sign-in. |
 | DEMO-001 | Cart and checkout | `src/tests/checkout/cart-checkout.spec.ts` | demo | State-changing example with cleanup. |
 | — | Sign in | `src/tests/auth/sign-in.spec.ts` | demo | `@smoke`. Valid and invalid paths. |

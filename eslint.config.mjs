@@ -24,8 +24,8 @@ export default [
 		plugins: { "@typescript-eslint": tseslint, playwright },
 		rules: {
 			...tsRules,
-			// The fixtures wrap test/expect with the env guard and cleanup; a spec
-			// importing the raw runner silently loses both.
+			// Shared fixtures are added in src/fixtures.ts; a spec importing the
+			// raw runner never receives them.
 			"@typescript-eslint/no-restricted-imports": [
 				"error",
 				{

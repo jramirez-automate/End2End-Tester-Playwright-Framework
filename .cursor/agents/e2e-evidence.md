@@ -15,7 +15,9 @@ read without running anything.
    confirm the named subject of that requirement is visible and readable, and
    that the video contains the proving moment. A pass whose media shows a blank
    page, a spinner, the wrong scroll position, a closed dialog, or an unrelated
-   screen is **invalid evidence**: fail that cell or recapture it.
+   screen is **invalid evidence**: fail that cell or recapture it. API cases
+   (`*.api.spec.ts`) have no screenshot: open their `-response.json` and confirm
+   the request, status and body match what the case asserts.
 3. Fix capture problems in the spec, not in the report: scroll the subject into
    view, keep the proving dialog or toast open, or attach a focused shot
    mid-test with `test.info().attach("screenshot", …)`.
