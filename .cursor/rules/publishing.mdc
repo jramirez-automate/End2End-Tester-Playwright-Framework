@@ -14,10 +14,13 @@ Publishing goes through `scripts/publish.mjs`. Providers come from
 - **One column per environment that actually ran.** Do not add a column of "not
   run" notes for an environment that was out of scope.
 - Test case ids are `TC-001`, `TC-002`, and so on.
-- **Planned cases come before specs.** When the ticket's cases should exist in
-  test management up front, write `src/evidence/<key>/test-cases.json` and run
-  `publish.mjs cases`; `all` then records the run with `mark-pass` against
-  those cases instead of creating new ones. The plan holds cases, never results.
+- **Specs first, then Zephyr.** Draft `src/evidence/<key>/test-cases.json`
+  before the specs, but run `publish.mjs cases` only once every automated case
+  has a passing spec and its `test` title filled in; `all` then records the run
+  with `mark-pass` against those cases instead of creating new ones. The plan
+  holds cases, never results.
+- **Zephyr cannot delete a test case.** Creating one needs `--create-cases`;
+  pass it only after the user approves the dry-run case list. Never `--force`.
 - **Every bug raised from a failure carries its own proof:**
   `publish.mjs bug --ticket <BUG-KEY> --from <key> --tc <TC-00N>` copies that
   case's `*-FAILED.png` and `*-FAILED.webm` into `src/evidence/<BUG-KEY>/`,

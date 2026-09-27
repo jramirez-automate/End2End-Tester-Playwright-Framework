@@ -28,14 +28,17 @@ import {
 import { log, fail } from "./lib/logger.mjs";
 import {
 	bundleDir,
+	cyclesStateFile,
 	failedMedia,
 	mergeRuns,
 	overallStatus,
 	planFile,
+	readCyclesState,
 	readPlan,
 	readResults,
 	readZephyrState,
 	referencedMedia,
+	writeCyclesState,
 	writeSummary,
 	writeZephyrState,
 	zephyrStateFile,
@@ -78,8 +81,8 @@ Commands
   attach     Upload the media the results table references
   comment    Post the results table, with media embedded inline
   plan       Create or update the test plan page, with media embedded
-  cases      Create planned test cases and a cycle from the test-case plan,
-             before any spec exists
+  cases      Create test cases and a cycle from the test-case plan, once
+             every automated case's test is in the run's results
   mark-pass  Record the run's results against the planned cases
   cycles     No plan: create cases from the run, a cycle per environment
   notify     Post a chat card for the environments in NOTIFY_ON_ENVS
@@ -99,7 +102,10 @@ Options
   --page-id <id>       plan / prune: this page, not a title lookup.
   --skip-media         plan: republish the body without re-uploading media.
   --plan <file>        cases: defaults to src/evidence/<ticket>/test-cases.json.
-  --force              cases: create again although zephyr.json exists.
+  --create-cases       cases / cycles: allow creating Zephyr test cases. Zephyr
+                       cannot delete a case, so review the dry run first.
+  --force              cases / cycles: create again although zephyr.json or
+                       zephyr-cycles.json exists. This duplicates every case.
   --from <key>         bug: the ticket whose run found the failure.
   --tc <TC-00N>        bug: the failed case to take the proof from.
   --files <a,b>        bug: a manual finding's media, already in src/evidence/<bug>/.
@@ -261,9 +267,56 @@ function testmgmtReady() {
 	return true;
 }
 
+/** Zephyr cannot delete a test case, so creating one takes an explicit flag. */
+function caseCreationAllowed() {
+	if (dryRun || has("create-cases")) return true;
+	log.warn(
+		"this step creates Zephyr test cases, which cannot be deleted — review the dry run, then pass --create-cases",
+	);
+	return false;
+}
+
+/**
+ * An automated case goes to Zephyr only once its `test` title is in the run's
+ * results and ran. A failure still counts: it is an app bug, and its case is
+ * where that failure gets recorded.
+ */
+function unverifiedCases(cases) {
+	const automated = cases.filter((entry) => !entry.manual);
+	if (!automated.length) return [];
+	let rows;
+	try {
+		rows = loadTable().rows;
+	} catch (error) {
+		return [error.message];
+	}
+	const problems = [];
+	for (const entry of automated) {
+		if (!entry.test) {
+			problems.push(`${entry.tc}: no "test" title`);
+			continue;
+		}
+		const row = rows.find((candidate) => candidate.title === entry.test);
+		if (!row) {
+			problems.push(
+				`${entry.tc}: "${entry.test}" is not in the run's results — the title must match the spec exactly`,
+			);
+			continue;
+		}
+		const statuses = Object.values(row.results).map((result) => result.status);
+		if (!statuses.some((status) => status === "Pass" || status === "Fail")) {
+			problems.push(`${entry.tc}: "${entry.test}" was skipped on every environment`);
+		} else if (statuses.includes("Fail")) {
+			log.warn(`${entry.tc}: "${entry.test}" failed — its case records an app bug`);
+		}
+	}
+	return problems;
+}
+
 async function cmdCases() {
 	section("Planned test cases");
 	if (!testmgmtReady()) return;
+	if (!caseCreationAllowed()) return;
 	const existing = readZephyrState(ticket);
 	if (existing && !has("force")) {
 		log.warn(
@@ -272,9 +325,11 @@ async function cmdCases() {
 		return;
 	}
 	const cases = readPlan(planFile(ticket, flag("plan")));
-	const unlinked = cases.filter((entry) => !entry.test).map((entry) => entry.tc);
-	if (unlinked.length) {
-		log.info(`no "test" title yet for ${unlinked.join(", ")} — fill it in once the spec exists`);
+	const problems = unverifiedCases(cases);
+	problems.forEach((problem) => log.warn(problem));
+	if (problems.length && !dryRun) {
+		log.warn('nothing created — run the specs first, or mark a case "manual": true');
+		return;
 	}
 	const created = await testmgmt.createPlannedCases({ ticket, cases }, { dryRun });
 	if (dryRun) return;
@@ -324,7 +379,19 @@ async function cmdMarkPass(table) {
 async function cmdCycles(table) {
 	section("Test management");
 	if (!testmgmtReady()) return;
+	const previous = readCyclesState(ticket);
+	if (previous && !has("force")) {
+		log.warn(
+			`${cyclesStateFile(ticket)} records cases created on ${previous.createdAt} — pass --force to create them again`,
+		);
+		return;
+	}
+	if (!caseCreationAllowed()) return;
 	const cases = await testmgmt.createTestCases({ ticket, rows: table.rows }, { dryRun });
+	if (!dryRun) {
+		writeCyclesState(ticket, { cases, createdAt: new Date().toISOString() });
+		log.ok(`wrote ${cyclesStateFile(ticket)}`);
+	}
 	for (const env of table.environments) {
 		const envRows = table.rows.filter((row) => row.results[env]);
 		const status = envRows.some((row) => row.results[env].status === "Fail") ? "Fail" : "Pass";

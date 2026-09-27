@@ -572,9 +572,9 @@ node scripts/publish.mjs all --ticket ABC-123 --summary "Checkout regression"
 | `attach` | Upload the media the results table references, skipping anything already attached. `--traces` adds each case's trace, `--only <text>` narrows by filename |
 | `comment` | Post the results table with media **embedded inline**, not linked |
 | `plan` | Create or update the wiki test plan with each case's media uploaded and embedded. `--target <name>` picks a destination, `--page-id` updates a known page, `--skip-media` republishes the body only |
-| `cases` | Create planned test cases and a cycle from `src/evidence/<key>/test-cases.json`, **before** any spec exists |
+| `cases` | Create planned test cases and a cycle from `src/evidence/<key>/test-cases.json`, **after** every automated case's spec passes. Needs `--create-cases` |
 | `mark-pass` | Record the run's results against those planned cases |
-| `cycles` | No plan: create cases from the run, a cycle per environment, an execution per case |
+| `cycles` | No plan: create cases from the run, a cycle per environment, an execution per case. Needs `--create-cases` |
 | `notify` | Post a chat card, gated to `NOTIFY_ON_ENVS` and a fully green run |
 | `cleanup` | Delete ticket attachments no comment or description references, keeping anything it didn't upload |
 | `prune` | Delete wiki page attachments the current table no longer uses, keeping anything it didn't upload |
@@ -590,12 +590,19 @@ skip without credentials.
 
 Notes that save time:
 
-- **Planned cases come first.** Write the ticket's cases as `src/evidence/<key>/test-cases.json`
-  (start from `templates/test-cases.example.json`) and run `cases` before any spec exists. Each case
-  gets numbered steps and one expected result, and the cycle holds a "Not Executed" execution per
-  case — the record that the cases predate the run. Once a spec exists, put its test title in the
-  case's `test` field; `all` then records results with `mark-pass`. The plan holds cases, never
+- **Specs first, then Zephyr.** Draft the ticket's cases as `src/evidence/<key>/test-cases.json`
+  (start from `templates/test-cases.example.json`) before writing specs, but keep the plan local.
+  Once each spec passes, put its test title in the case's `test` field (or mark a case that stays
+  manual `"manual": true`), then run `cases`. It refuses any automated case whose title is missing or
+  not in the run's results, so a typo cannot create a wrong case. Each
+  case gets numbered steps and one expected result, and the cycle holds a "Not Executed" execution
+  per case; `all` then records results into it with `mark-pass`. The plan holds cases, never
   results.
+- **Zephyr cannot delete a test case.** `cases` and `cycles` only create cases when you pass
+  `--create-cases`, so review the dry run's case list first. A second `cases` or `cycles` for the
+  same ticket is refused unless you pass `--force`, which duplicates every case. The records of what
+  was created (`zephyr.json`, `zephyr-cycles.json`) live in the gitignored bundle, so they exist
+  only on the machine that published.
 - **Every bug raised from a failure carries its own proof.** Create the bug, then:
   ```bash
   node scripts/publish.mjs bug --ticket BUG-7 --from ABC-123 --tc TC-003 --dry-run

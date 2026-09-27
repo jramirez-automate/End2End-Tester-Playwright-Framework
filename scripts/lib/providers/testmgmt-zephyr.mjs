@@ -95,9 +95,8 @@ export async function recordExecutions({ cycleKey, cases, rows, env }, { dryRun 
 }
 
 /**
- * Create the planned cases, written from the ticket's criteria before any spec
- * exists, plus one cycle holding a "Not Executed" execution per case. That
- * untouched execution is the record that the cases predate the run.
+ * Create the planned cases, written from the ticket's criteria, plus one cycle
+ * holding a "Not Executed" execution per case for `mark-pass` to record into.
  */
 export async function createPlannedCases({ ticket, cases }, { dryRun }) {
 	const created = [];

@@ -1,5 +1,5 @@
 {
-	"$comment": "Copy to src/evidence/<TICKET>/test-cases.json and fill from the ticket's acceptance criteria BEFORE writing any spec. `publish.mjs cases` creates these in test management; `mark-pass` later records the run against them. `test` is the exact Playwright test title, filled in once the spec exists. Steps are user actions a manual tester can follow: no selectors, no file paths. The expected result is one observable outcome.",
+	"$comment": "Copy to src/evidence/<TICKET>/test-cases.json and draft from the ticket's acceptance criteria before writing any spec. Nothing goes to test management until every automated case has a passing spec: `test` is its exact Playwright test title, and `publish.mjs cases` refuses a case whose title is missing or not in the run's results, unless it has \"manual\": true. `mark-pass` then records the run against the created cases. Steps are user actions a manual tester can follow: no selectors, no file paths. The expected result is one observable outcome.",
 	"cases": [
 		{
 			"tc": "TC-001",

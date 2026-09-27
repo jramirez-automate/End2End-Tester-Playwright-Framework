@@ -22,6 +22,12 @@ invent results; everything comes from `src/evidence/<key>/results-<env>.json`.
    `publish.mjs cases`), `all` records the run against those cases with
    `mark-pass`; otherwise `cycles` creates cases from the run. Report any
    "no automated result" or "no planned case" warnings.
+   **Zephyr cannot delete a test case.** `cases` and `cycles` create cases only
+   with `--create-cases`. Pass it only after the user has approved the case
+   list in the dry run, and never pass `--force` unless the user asks for
+   duplicates. `cases` runs only once the specs have run: it refuses an automated
+   case whose `test` title is missing or not in the run's results, unless the
+   case is `"manual": true`.
 3. **For every failed test case, raise a bug** and give it the same proof.
    Create the bug in the configured tracker, then:
    `node scripts/publish.mjs bug --ticket <BUG-KEY> --from <key> --tc <TC-00N> --dry-run`
