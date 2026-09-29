@@ -31,7 +31,11 @@ export async function createTestCases({ rows }, { dryRun }) {
 				projectKey: config.zephyr.projectKey,
 				name: row.title,
 				objective: `Automated by ${row.file}`,
-				labels: ["automated", ...(row.tags ?? []).map((tag) => tag.replace(/^@/, ""))],
+				labels: [
+					"automated",
+					...(row.layer === "api" ? ["API"] : []),
+					...(row.tags ?? []).map((tag) => tag.replace(/^@/, "")),
+				],
 				...(config.zephyr.folderId ? { folderId: Number(config.zephyr.folderId) } : {}),
 			}),
 		});
@@ -103,12 +107,15 @@ export async function createPlannedCases({ ticket, cases }, { dryRun }) {
 	for (const entry of cases) {
 		const name = `${entry.tc} ${entry.name}`;
 		if (dryRun) {
-			log.plan(`create planned case "${name}" (${entry.steps.length} step(s))`);
+			log.plan(
+				`create planned ${entry.layer === "api" ? "API " : ""}case "${name}" (${entry.steps.length} step(s))`,
+			);
 			created.push({
 				tc: entry.tc,
 				key: `${config.zephyr.projectKey}-T?`,
 				name,
 				test: entry.test ?? "",
+				...(entry.layer ? { layer: entry.layer } : {}),
 			});
 			continue;
 		}
@@ -119,7 +126,11 @@ export async function createPlannedCases({ ticket, cases }, { dryRun }) {
 				name,
 				objective: entry.objective ?? `Acceptance criteria of ${ticket}`,
 				...(entry.precondition ? { precondition: entry.precondition } : {}),
-				labels: [ticket],
+				labels: [
+					ticket,
+					...(entry.manual ? [] : ["Automated"]),
+					...(entry.layer === "api" ? ["API"] : []),
+				],
 				...(config.zephyr.folderId ? { folderId: Number(config.zephyr.folderId) } : {}),
 			}),
 		});
@@ -137,7 +148,13 @@ export async function createPlannedCases({ ticket, cases }, { dryRun }) {
 				})),
 			}),
 		});
-		created.push({ tc: entry.tc, key: testCase.key, name, test: entry.test ?? "" });
+		created.push({
+			tc: entry.tc,
+			key: testCase.key,
+			name,
+			test: entry.test ?? "",
+			...(entry.layer ? { layer: entry.layer } : {}),
+		});
 		log.ok(`planned case ${testCase.key} — ${name}`);
 	}
 

@@ -34,6 +34,14 @@ Selectors:
 Async behaviour: <requests to wait for, spinners, optimistic UI>
 Success signals: <toast text, URL change, row appearing>
 Risks: <duplicate DOM, iframes, virtualised lists, animation>
+API map (the endpoints behind the requirements, which decide each one's layer):
+  <requirement #> → <METHOD> <path incl. query> — payload: <fields that matter>;
+    success: <status + the body field that proves it>;
+    errors: <status → error body shape, e.g. 400 {"<field>": ["<message>"]}>;
+    source: <file or generated client method that makes the call, or "network">
+  <requirement #> → none (client-side only)
+Proposed slices: <requirement #> → "<test title>" — layer: UI | API | UI + API
+  — proves: <the visible signal, or status + body field>
 NEW NAV FACT: <route that was not where the map said, plus the effort it cost>
 ```
 
@@ -43,6 +51,9 @@ NEW NAV FACT: <route that was not where the map said, plus the effort it cost>
   a stable test id is the only sane option.
 - Flag duplicate or responsive DOM explicitly: it is the most common cause of a
   test that "does nothing" because it drove the hidden copy.
+- Build the API map from source when there is some, otherwise from the requests
+  the running app makes. Give status codes and body shapes, never whole
+  responses.
 - Report anything that took more than a couple of attempts to find as a
   `NEW NAV FACT`, so it lands in `docs/APP-MAP.md` and is never rediscovered.
 - Hard cap: 100 lines. Facts only, no narration.

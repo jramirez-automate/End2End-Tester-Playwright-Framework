@@ -1,5 +1,5 @@
 {
-	"$comment": "Copy to src/evidence/<TICKET>/test-cases.json and draft from the ticket's acceptance criteria before writing any spec. Nothing goes to test management until every automated case has a passing spec: `test` is its exact Playwright test title, and `publish.mjs cases` refuses a case whose title is missing or not in the run's results, unless it has \"manual\": true. `mark-pass` then records the run against the created cases. Steps are user actions a manual tester can follow: no selectors, no file paths. The expected result is one observable outcome.",
+	"$comment": "Copy to src/evidence/<TICKET>/test-cases.json and draft from the ticket's acceptance criteria before writing any spec. Nothing goes to test management until every automated case has a passing spec: `test` is its exact Playwright test title, and `publish.mjs cases` refuses a case whose title is missing or not in the run's results, unless it has \"manual\": true. `mark-pass` then records the run against the created cases. Steps are user actions a manual tester can follow: no selectors, no file paths. The expected result is one observable outcome. A case proved by a *.api.spec.ts gets \"layer\": \"api\" and a name starting \"Verify (API)\"; its steps are the request made and its expected result is the status plus the deciding body field. Plan an API case only when it maps to an acceptance criterion.",
 	"cases": [
 		{
 			"tc": "TC-001",
@@ -21,6 +21,14 @@
 			"steps": ["Open the cart and select Checkout", "Leave every field empty and select Continue"],
 			"expected": "An error reads \"First Name is required\" and the overview page does not open",
 			"test": "checkout rejects missing details"
+		},
+		{
+			"tc": "TC-003",
+			"name": "Verify (API) an unknown post id is refused with 404",
+			"layer": "api",
+			"steps": ["Send GET /posts/999999", "Read the response"],
+			"expected": "The status is 404 Not Found",
+			"test": "an unknown post id returns 404"
 		}
 	]
 }

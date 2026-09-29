@@ -4,6 +4,7 @@ import path from "node:path";
 import { config, jiraAuthHeader } from "../config.mjs";
 import { expectOk, log } from "../logger.mjs";
 import * as adf from "../adf.mjs";
+import { groupsOf, sectionsByLayer } from "../evidence.mjs";
 
 const api = () => `${config.jira.baseUrl}/rest/api/3`;
 const authHeaders = () => ({ Authorization: jiraAuthHeader(), Accept: "application/json" });
@@ -63,15 +64,26 @@ async function mediaUuid(attachmentId) {
 	return uuid;
 }
 
-export async function mediaUuidsByFilename(ticket, names, { dryRun }) {
+/**
+ * A recapture re-uploads the same filenames, so each name resolves to its
+ * newest upload. `uploadedBefore` (epoch ms) ignores uploads from that moment
+ * on, which rebuilds an earlier run's comment after a retest.
+ */
+export async function mediaUuidsByFilename(ticket, names, { dryRun, uploadedBefore }) {
 	const map = new Map();
 	if (dryRun) {
 		names.forEach((name) => map.set(name, "00000000-0000-0000-0000-000000000000"));
 		return map;
 	}
-	const attachments = await listAttachments(ticket);
+	const newest = new Map();
+	for (const entry of await listAttachments(ticket)) {
+		const created = Date.parse(entry.created);
+		if (uploadedBefore !== undefined && created >= uploadedBefore) continue;
+		const previous = newest.get(entry.filename);
+		if (!previous || created >= Date.parse(previous.created)) newest.set(entry.filename, entry);
+	}
 	for (const name of names) {
-		const match = attachments.find((entry) => entry.filename === name);
+		const match = newest.get(name);
 		if (!match) continue;
 		map.set(name, await mediaUuid(match.id));
 	}
@@ -80,37 +92,67 @@ export async function mediaUuidsByFilename(ticket, names, { dryRun }) {
 
 const STATUS_ICON = { Pass: "✅ Pass", Fail: "❌ Fail", Skipped: "⏭ Skipped" };
 
-/** Build the results comment: a test scenario table with media embedded per cell. */
+/**
+ * Build the results comment: a test scenario table with media embedded per
+ * cell, split into UI Tests and API Tests when the run has API cases. Each
+ * section's table opens with its name across every column, then the column
+ * headings, then a bold row per feature group above that group's cases.
+ */
 export function buildCommentBody({ ticket, environments, rows, uuids, links }) {
-	const header = adf.row([
-		adf.cell(adf.paragraph(adf.strong("TC")), true),
-		adf.cell(adf.paragraph(adf.strong("Case")), true),
-		...environments.map((env) => adf.cell(adf.paragraph(adf.strong(env)), true)),
-	]);
+	const planned = rows.some((row) => row.steps);
+	const headings = [
+		"TC",
+		"Scenario",
+		...(planned ? ["Steps", "Expected result"] : []),
+		...environments,
+	];
+	const width = headings.length;
+	const header = adf.row(headings.map((label) => adf.cell(adf.paragraph(adf.strong(label)), true)));
+	const titleRow = (title) => adf.row([adf.cell(adf.centered(adf.strong(title)), true, width)]);
+	const groupRow = (name) => adf.row([adf.cell(adf.paragraph(adf.strong(name)), false, width)]);
 
-	const bodyRows = rows.map((row) =>
-		adf.row([
-			adf.cell(adf.paragraph(adf.text(row.tc))),
-			adf.cell(adf.paragraph(adf.text(row.title))),
-			...environments.map((env) => {
-				const result = row.results[env];
-				if (!result) return adf.cell(adf.paragraph(adf.text("—")));
-				const media = (result.media ?? [])
-					.filter((name) => uuids.has(name))
-					.map((name) => adf.mediaFor(name, uuids.get(name)));
-				return adf.cell([
-					adf.paragraph(adf.text(STATUS_ICON[result.status] ?? result.status)),
-					...media,
-					...(result.error ? [adf.paragraph(adf.text(result.error))] : []),
-				]);
-			}),
-		]),
-	);
+	const caseRows = (sectionRows) =>
+		sectionRows.map((row) =>
+			adf.row([
+				adf.cell(adf.paragraph(adf.text(row.tc))),
+				adf.cell(adf.paragraph(adf.text(row.scenario ?? row.title))),
+				...(planned
+					? [
+							adf.cell(
+								row.steps?.length ? adf.orderedList(row.steps) : adf.paragraph(adf.text("—")),
+							),
+							adf.cell(adf.paragraph(adf.text(row.expected ?? "—"))),
+						]
+					: []),
+				...environments.map((env) => {
+					const result = row.results[env];
+					if (!result) return adf.cell(adf.paragraph(adf.text("—")));
+					const media = (result.media ?? [])
+						.filter((name) => uuids.has(name))
+						.map((name) => adf.mediaFor(name, uuids.get(name)));
+					return adf.cell([
+						adf.paragraph(adf.text(STATUS_ICON[result.status] ?? result.status)),
+						...media,
+						...(result.error ? [adf.paragraph(adf.text(result.error))] : []),
+					]);
+				}),
+			]),
+		);
 
 	return adf.doc([
 		adf.heading(3, `${ticket} — automated test results`),
 		adf.heading(4, "Test Scenario"),
-		adf.table([header, ...bodyRows]),
+		...sectionsByLayer(rows).flatMap((section) => [
+			section.title ? adf.heading(5, section.title) : undefined,
+			adf.table([
+				...(section.title ? [titleRow(section.title)] : []),
+				header,
+				...groupsOf(section.rows).flatMap((group) => [
+					...(group.name ? [groupRow(group.name)] : []),
+					...caseRows(group.rows),
+				]),
+			]),
+		]),
 		...(links?.length
 			? [
 					adf.heading(4, "Links"),
@@ -151,11 +193,12 @@ const EVIDENCE_HEADING = "Evidence";
  * Render media inside the issue description, under a trailing "Evidence"
  * heading. Everything from that heading down is replaced, so re-running
  * refreshes the proof instead of stacking a second copy under the first.
+ * `extra` is ADF appended after the media, such as a network capture note.
  */
-export async function embedInDescription(ticket, uuids, { dryRun }) {
+export async function embedInDescription(ticket, uuids, { dryRun, extra = [] }) {
 	if (dryRun) {
 		log.plan(
-			`embed ${uuids.size} media file(s) in the ${ticket} description under "${EVIDENCE_HEADING}"`,
+			`embed ${uuids.size} media file(s)${extra.length ? " and a network capture note" : ""} in the ${ticket} description under "${EVIDENCE_HEADING}"`,
 		);
 		return;
 	}
@@ -177,6 +220,7 @@ export async function embedInDescription(ticket, uuids, { dryRun }) {
 			adf.paragraph(adf.text(name)),
 			adf.mediaFor(name, uuid),
 		]),
+		...extra,
 	]);
 	const res = await fetch(`${api()}/issue/${encodeURIComponent(ticket)}`, {
 		method: "PUT",
@@ -238,7 +282,7 @@ export async function cleanup(ticket, { dryRun, keepNames = [] }) {
 		JSON.stringify((await res.json()).comments ?? []) +
 		JSON.stringify(await readDescription(ticket));
 
-	const capture = /\.(png|jpe?g|webm|zip|md|json)$/i;
+	const capture = /\.(png|jpe?g|webm|zip|md|json|har)$/i;
 	const deleted = [];
 	const guarded = [];
 

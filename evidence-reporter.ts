@@ -13,6 +13,8 @@ interface EvidenceReporterOptions {
 interface EvidenceRow {
 	tc: string;
 	title: string;
+	/** The enclosing `test.describe` title: the feature group the results table rows sit under. */
+	group?: string;
 	file: string;
 	tags: string[];
 	status: "Pass" | "Fail" | "Skipped";
@@ -122,6 +124,7 @@ class EvidenceReporter implements Reporter {
 			rows.push({
 				tc: `TC-${String(index + 1).padStart(3, "0")}`,
 				title: test.title,
+				...(test.parent.type === "describe" ? { group: test.parent.title } : {}),
 				file: path.relative(process.cwd(), test.location.file),
 				tags: [...test.tags],
 				status: skipped ? "Skipped" : failed ? "Fail" : "Pass",

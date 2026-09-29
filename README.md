@@ -532,7 +532,14 @@ src/evidence/ABC-123/
 ```
 
 API cases have no screen, so their proof is `<test>-<env>-response.json` (request, status and
-body, written by `readBody`), which publishing attaches like any other media.
+body, written by `readBody`), which publishing attaches like any other media and renders as a file
+card. When a run has `*.api.spec.ts` cases, `SUMMARY.md`, the results comment and the wiki plan
+split into **UI Tests** then **API Tests**, with TC ids running on from the UI rows. On the wiki
+plan and the Jira comment, each section's table opens with its name across every column, then
+`TC | Scenario | Steps | Expected result | <env>…`, then a bold row per feature group (the spec's
+`test.describe` title) above that group's cases. Scenario, Steps and Expected result come from
+`test-cases.json`; without a plan the table shows the test title and no Steps or Expected result
+columns.
 
 Everything under `src/evidence/` is gitignored — regenerate on demand. Screenshots are
 1920×1080; videos record at 1280×720.
@@ -570,7 +577,7 @@ node scripts/publish.mjs all --ticket ABC-123 --summary "Checkout regression"
 | --- | --- |
 | `summary` | Write `SUMMARY.md` from the run results |
 | `attach` | Upload the media the results table references, skipping anything already attached. `--traces` adds each case's trace, `--only <text>` narrows by filename |
-| `comment` | Post the results table with media **embedded inline**, not linked |
+| `comment` | Post the results table with media **embedded inline**, not linked. Each filename resolves to its newest upload; `--uploaded-before <date>` rebuilds an earlier run's comment after a retest |
 | `plan` | Create or update the wiki test plan with each case's media uploaded and embedded. `--target <name>` picks a destination, `--page-id` updates a known page, `--skip-media` republishes the body only |
 | `cases` | Create planned test cases and a cycle from `src/evidence/<key>/test-cases.json`, **after** every automated case's spec passes. Needs `--create-cases` |
 | `mark-pass` | Record the run's results against those planned cases |
@@ -578,7 +585,7 @@ node scripts/publish.mjs all --ticket ABC-123 --summary "Checkout regression"
 | `notify` | Post a chat card, gated to `NOTIFY_ON_ENVS` and a fully green run |
 | `cleanup` | Delete ticket attachments no comment or description references, keeping anything it didn't upload |
 | `prune` | Delete wiki page attachments the current table no longer uses, keeping anything it didn't upload |
-| `bug` | Give a bug its own proof: copy a failed case's media, attach it, embed it in the description, link the bug to the ticket |
+| `bug` | Give a bug its own proof: copy a failed case's media, attach it, embed it in the description, link the bug to the ticket, and add a redacted HAR of the failing run |
 | `all` | `summary`, `attach`, `plan`, `mark-pass` (or `cycles`), `comment`, `notify` |
 
 Providers: tracker `jira` or `github`, wiki `confluence`, test management `zephyr`, chat `teams`
@@ -597,7 +604,9 @@ Notes that save time:
   not in the run's results, so a typo cannot create a wrong case. Each
   case gets numbered steps and one expected result, and the cycle holds a "Not Executed" execution
   per case; `all` then records results into it with `mark-pass`. The plan holds cases, never
-  results.
+  results. A case proved by a `*.api.spec.ts` gets `"layer": "api"` and a "Verify (API)" name, and
+  is created labelled `API` and `Automated`; `cases` refuses a case whose layer doesn't match its
+  spec. Plan an API case only when it maps to an acceptance criterion.
 - **Zephyr cannot delete a test case.** `cases` and `cycles` only create cases when you pass
   `--create-cases`, so review the dry run's case list first. A second `cases` or `cycles` for the
   same ticket is refused unless you pass `--force`, which duplicates every case. The records of what
@@ -612,6 +621,13 @@ Notes that save time:
   them, embeds them in the bug's description under an **Evidence** heading (replaced, not
   duplicated, on a re-run), and links the bug to `ABC-123`. For a manual finding, save the media in
   `src/evidence/BUG-7/` and pass `--files a.png,b.webm` instead of `--tc`.
+- **Bugs carry a HAR for the developers.** `bug` also turns the case's `*-FAILED-trace.zip` into
+  `BUG-7-<env>.har` (`scripts/lib/har.mjs`), with auth headers, cookies and token fields redacted
+  and only text bodies kept. It attaches the file and embeds it under a **Network capture** note
+  that lists each failing call: method, path, status and error body. Import it in DevTools →
+  Network. Playwright does not record `multipart/form-data` request bodies, and the note says so
+  for such a call. A manual finding can add a DevTools-exported `.har` to `--files`, but strip its
+  `Authorization` and `Cookie` headers first, because it is uploaded as it is.
 - **Inline media needs ADF.** A markdown comment can only *link* an attachment. The Jira adapter
   resolves each attachment to its media id and builds real media nodes, so thumbnails and playable
   video render inside the table.

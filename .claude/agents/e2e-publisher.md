@@ -33,8 +33,15 @@ invent results; everything comes from `src/evidence/<key>/results-<env>.json`.
    `node scripts/publish.mjs bug --ticket <BUG-KEY> --from <key> --tc <TC-00N> --dry-run`
    and, once the plan looks right, the same without `--dry-run`. It copies the
    case's `*-FAILED` media into `src/evidence/<BUG-KEY>/`, attaches it, embeds it in
-   the bug's description, and links the bug to the ticket under test.
-   A bug with no evidence on it is an incomplete bug.
+   the bug's description, and links the bug to the ticket under test. It also
+   builds `<BUG-KEY>-<env>.har` from the case's `-FAILED-trace.zip` with auth
+   headers, cookies and tokens redacted, attaches it, and embeds it under a
+   **Network capture** note listing each failing call. Check the dry run lists
+   the HAR. A bug with no evidence on it is an incomplete bug.
+   `all` needs no layer flag: API cases land under **API Tests** in the comment
+   and the plan by themselves. To rebuild an earlier run's comment after a
+   retest re-uploaded the same filenames, pass `--uploaded-before <date>` to
+   `comment`.
 4. Post the links once, in one place: the publish run collects the wiki page and
    the test cycles and puts them in a single comment. Do not scatter them across
    several comments, and do not duplicate them onto the results table.

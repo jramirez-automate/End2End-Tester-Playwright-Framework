@@ -54,7 +54,7 @@ Frequency: every time | intermittent (<n> of <m> tries, and what differed)
 Severity: Critical | High | Medium | Low
 Priority: <suggested — the lead / PO decides>
 Found by: <TC-### in <KEY> evidence run | exploratory session "<mission>">
-Evidence: <attached screenshot / recording, embedded below>
+Evidence: <attached screenshot / recording, embedded below; HAR of the failing session for the devs>
 ```
 
 ## Writing rules
@@ -80,7 +80,9 @@ Evidence: <attached screenshot / recording, embedded below>
 
 Show the draft and wait for an explicit yes — nothing is filed without it.
 After it's filed, the bug carries its own proof: the screenshot and recording
-are attached to **the bug**, not only to the ticket it was found on.
+are attached to **the bug**, not only to the ticket it was found on — and so is
+a HAR of the failing session, so a developer can see the exact request and
+response without reproducing it first. Redact credentials before attaching it.
 
 When the fix lands, retest with the bug's own steps on the environment where
 it was found, then rerun the related test cases. If nothing in the suite
@@ -100,7 +102,18 @@ would catch it coming back, add a case (`test-case-design`) and automate it.
    For a manual finding, save the screenshot or recording in
    `src/evidence/<BUG-KEY>/` and pass `--files <name.png>,<name.webm>` instead of
    `--tc`. Re-running replaces the Evidence section rather than adding another.
-3. List it in the parent ticket's final report:
+3. Give the developers the network side: a HAR. For an automated failure the
+   same command builds `<BUG-KEY>-<env>.har` from the case's
+   `*-FAILED-trace.zip`, attaches it, and embeds it under a **Network capture**
+   note that lists each failing call (method, path, status, error body). Check
+   the dry run lists it. Auth headers, cookies and tokens are redacted.
+   Playwright doesn't record `multipart/form-data` request bodies, so the note
+   says so for such a call; if the developer needs the submitted fields, export
+   a HAR from DevTools. For a manual finding, export the HAR from DevTools →
+   Network → "Save all as HAR", **strip `Authorization` and `Cookie` headers
+   before attaching**, save it in `src/evidence/<BUG-KEY>/` and add it to
+   `--files`.
+4. List it in the parent ticket's final report:
    `Bugs raised: <BUG-KEY> — one line — evidence attached y/n`.
-4. Browser version for automated runs: the Chromium bundled with the pinned
+5. Browser version for automated runs: the Chromium bundled with the pinned
    `@playwright/test` (runs are headless unless headed mode was used).

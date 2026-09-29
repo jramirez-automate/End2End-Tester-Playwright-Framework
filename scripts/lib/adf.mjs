@@ -10,6 +10,7 @@ export const text = (value, marks) => ({
 	...(marks ? { marks } : {}),
 });
 export const strong = (value) => text(value, [{ type: "strong" }]);
+export const code = (value) => text(value, [{ type: "code" }]);
 export const link = (value, href) => text(value, [{ type: "link", attrs: { href } }]);
 
 export const paragraph = (...content) => ({
@@ -23,13 +24,29 @@ export const heading = (level, value) => ({
 	content: [text(value)],
 });
 
-export const cell = (content, isHeader = false) => ({
+/** A paragraph with its text centred, as in a table's title row. */
+export const centered = (...content) => ({
+	...paragraph(...content),
+	marks: [{ type: "alignment", attrs: { align: "center" } }],
+});
+
+export const cell = (content, isHeader = false, colspan = 1) => ({
 	type: isHeader ? "tableHeader" : "tableCell",
-	attrs: {},
+	attrs: colspan > 1 ? { colspan } : {},
 	content: Array.isArray(content) ? content : [content],
 });
 
 export const row = (cells) => ({ type: "tableRow", content: cells });
+
+export const bulletList = (items) => ({
+	type: "bulletList",
+	content: items.map((item) => ({ type: "listItem", content: [item] })),
+});
+
+export const orderedList = (items) => ({
+	type: "orderedList",
+	content: items.map((item) => ({ type: "listItem", content: [paragraph(text(item))] })),
+});
 
 export const table = (rows) => ({
 	type: "table",

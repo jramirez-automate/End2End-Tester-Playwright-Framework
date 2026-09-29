@@ -1,4 +1,5 @@
 import { config } from "../config.mjs";
+import { sectionsByLayer } from "../evidence.mjs";
 import { expectOk, log } from "../logger.mjs";
 
 /**
@@ -24,24 +25,29 @@ export function buildCommentBody({ ticket, environments, rows, links }) {
 
 	const head = `| TC | Case | ${environments.join(" | ")} |`;
 	const divider = `| --- | --- | ${environments.map(() => "---").join(" | ")} |`;
-	const body = rows.map((row) => {
-		const cells = environments.map((env) => {
-			const result = row.results[env];
-			if (!result) return "—";
-			return [`${ICON[result.status] ?? ""} ${result.status}`, mediaLinks(result.media)]
-				.filter(Boolean)
-				.join("<br>");
+	const table = (sectionRows) =>
+		sectionRows.map((row) => {
+			const cells = environments.map((env) => {
+				const result = row.results[env];
+				if (!result) return "—";
+				return [`${ICON[result.status] ?? ""} ${result.status}`, mediaLinks(result.media)]
+					.filter(Boolean)
+					.join("<br>");
+			});
+			return `| ${row.tc} | ${row.title} | ${cells.join(" | ")} |`;
 		});
-		return `| ${row.tc} | ${row.title} | ${cells.join(" | ")} |`;
-	});
 
 	return [
 		`### ${ticket} — automated test results`,
 		"",
 		"#### Test Scenario",
-		head,
-		divider,
-		...body,
+		...sectionsByLayer(rows).flatMap((section, index) => [
+			...(index ? [""] : []),
+			...(section.title ? [`##### ${section.title}`, ""] : []),
+			head,
+			divider,
+			...table(section.rows),
+		]),
 		...(links?.length ? ["", "#### Links", ...links.map((l) => `- [${l.title}](${l.url})`)] : []),
 		"",
 	].join("\n");

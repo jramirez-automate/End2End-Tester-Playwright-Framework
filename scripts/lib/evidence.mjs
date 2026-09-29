@@ -26,10 +26,23 @@ export function readResults(ticket) {
 	return files.map((name) => JSON.parse(fs.readFileSync(path.join(dir, name), "utf8")));
 }
 
+/** `api` for a case from a `*.api.spec.ts`, otherwise `ui`. */
+export const layerOf = (file) => (/\.api\.spec\.[cm]?[jt]s$/.test(file ?? "") ? "api" : "ui");
+
+/** A run written before the reporter recorded groups falls back to the feature folder. */
+const featureOf = (file) => file?.match(/(?:^|\/)tests\/([^/]+)\//)?.[1] ?? "";
+
+/** Rows of each group together, groups in the order they first appear. */
+const byGroup = (rows) => {
+	const order = [...new Set(rows.map((row) => row.group))];
+	return order.flatMap((group) => rows.filter((row) => row.group === group));
+};
+
 /**
  * Merge per-environment runs into rows:
- *   { tc, title, tags, results: { dev: { status, media }, staging: {...} } }
- * Test case ids are re-assigned across the merged set so they stay contiguous.
+ *   { tc, title, group, tags, layer, results: { dev: { status, media }, staging: {...} } }
+ * Test case ids are re-assigned across the merged set so they stay contiguous:
+ * UI cases first and API cases after them, each feature group's cases together.
  */
 export function mergeRuns(runs) {
 	const byTitle = new Map();
@@ -41,8 +54,10 @@ export function mergeRuns(runs) {
 		for (const testCase of run.cases) {
 			const row = byTitle.get(testCase.title) ?? {
 				title: testCase.title,
+				group: testCase.group ?? featureOf(testCase.file),
 				tags: testCase.tags ?? [],
 				file: testCase.file,
+				layer: layerOf(testCase.file),
 				results: {},
 			};
 			row.results[env] = {
@@ -54,12 +69,54 @@ export function mergeRuns(runs) {
 		}
 	}
 
-	const rows = [...byTitle.values()].map((row, index) => ({
+	const merged = [...byTitle.values()];
+	const rows = [
+		...byGroup(merged.filter((row) => row.layer === "ui")),
+		...byGroup(merged.filter((row) => row.layer === "api")),
+	].map((row, index) => ({
 		...row,
 		tc: `TC-${String(index + 1).padStart(3, "0")}`,
 	}));
 
 	return { environments, rows };
+}
+
+/**
+ * The results table's sections: "UI Tests" then "API Tests" when the run has
+ * API cases, otherwise one untitled section holding every row.
+ */
+export function sectionsByLayer(rows) {
+	const api = rows.filter((row) => row.layer === "api");
+	if (!api.length) return [{ title: undefined, rows }];
+	const ui = rows.filter((row) => row.layer !== "api");
+	return [
+		...(ui.length ? [{ title: "UI Tests", rows: ui }] : []),
+		{ title: "API Tests", rows: api },
+	];
+}
+
+/** A section's rows cut at each change of feature group, for the group rows. */
+export function groupsOf(rows) {
+	const groups = [];
+	for (const row of rows) {
+		const last = groups.at(-1);
+		if (last && last.name === row.group) last.rows.push(row);
+		else groups.push({ name: row.group, rows: [row] });
+	}
+	return groups;
+}
+
+/**
+ * Give each row its planned case's scenario, steps and expected result,
+ * matched on the `test` title. Rows with no planned case keep their title.
+ */
+export function withPlan(rows, cases) {
+	return rows.map((row) => {
+		const planned = cases.find((entry) => entry.test && entry.test === row.title);
+		return planned
+			? { ...row, scenario: planned.name, steps: planned.steps, expected: planned.expected }
+			: row;
+	});
 }
 
 /**
@@ -105,6 +162,23 @@ export function failedMedia(ticket, row) {
 }
 
 /**
+ * The trace of each environment a case failed on, `<base>-trace.zip` beside
+ * its `-FAILED` media, with the environment it ran on.
+ */
+export function failedTraces(ticket, row) {
+	const dir = bundleDir(ticket);
+	return Object.entries(row.results)
+		.filter(([, result]) => result.status === "Fail")
+		.flatMap(([env, result]) => {
+			const failed = (result.media ?? []).find((name) => name.includes("-FAILED"));
+			if (!failed) return [];
+			const name = `${mediaBase(failed).replace(/-response$/, "")}-trace.zip`;
+			const file = path.join(dir, name);
+			return fs.existsSync(file) ? [{ env, name, file }] : [];
+		});
+}
+
+/**
  * The test-case plan: drafted from the ticket's criteria, then linked to each
  * spec's title (see templates/test-cases.example.json). Cases, not results.
  */
@@ -125,6 +199,8 @@ export function readPlan(file) {
 		if (!entry.name) problems.push(`${where}: name is required`);
 		if (!entry.steps?.length) problems.push(`${where}: at least one step is required`);
 		if (!entry.expected) problems.push(`${where}: expected is required`);
+		if (entry.layer && !["ui", "api"].includes(entry.layer))
+			problems.push(`${where}: layer must be "ui" or "api"`);
 	});
 	if (!cases.length) problems.push("the plan has no cases");
 	if (problems.length) throw new Error(`Invalid plan ${file}:\n  ${problems.join("\n  ")}`);
@@ -173,19 +249,24 @@ export function writeSummary(ticket, { environments, rows }) {
 	const header = ["| TC | Case |", "| --- | --- |"];
 	const head = `| TC | Case | ${environments.join(" | ")} |`;
 	const divider = `| --- | --- | ${environments.map(() => "---").join(" | ")} |`;
-	const lines = rows.map((row) => {
-		const cells = environments.map((env) => row.results[env]?.status ?? "—");
-		return `| ${row.tc} | ${row.title} | ${cells.join(" | ")} |`;
-	});
+	const table = (sectionRows) => [
+		environments.length ? head : header[0],
+		environments.length ? divider : header[1],
+		...sectionRows.map((row) => {
+			const cells = environments.map((env) => row.results[env]?.status ?? "—");
+			return `| ${row.tc} | ${row.title} | ${cells.join(" | ")} |`;
+		}),
+	];
 	const body = [
 		`# ${ticket} — test summary`,
 		"",
 		`Generated ${new Date().toISOString()} · overall ${overallStatus(rows)}`,
 		"",
-		environments.length ? head : header[0],
-		environments.length ? divider : header[1],
-		...lines,
-		"",
+		...sectionsByLayer(rows).flatMap((section) => [
+			...(section.title ? [`## ${section.title}`, ""] : []),
+			...table(section.rows),
+			"",
+		]),
 	].join("\n");
 	const file = path.join(dir, "SUMMARY.md");
 	fs.writeFileSync(file, body);

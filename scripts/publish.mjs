@@ -25,11 +25,14 @@ import {
 	zephyrConfigured,
 	chatConfigured,
 } from "./lib/config.mjs";
+import * as adf from "./lib/adf.mjs";
+import { failures, traceToHar } from "./lib/har.mjs";
 import { log, fail } from "./lib/logger.mjs";
 import {
 	bundleDir,
 	cyclesStateFile,
 	failedMedia,
+	failedTraces,
 	mergeRuns,
 	overallStatus,
 	planFile,
@@ -38,6 +41,7 @@ import {
 	readResults,
 	readZephyrState,
 	referencedMedia,
+	withPlan,
 	writeCyclesState,
 	writeSummary,
 	writeZephyrState,
@@ -61,6 +65,7 @@ const VALUE_FLAGS = [
 	"--from",
 	"--tc",
 	"--files",
+	"--uploaded-before",
 ];
 const command =
 	args.find((arg, index) => !arg.startsWith("-") && !VALUE_FLAGS.includes(args[index - 1])) ??
@@ -89,13 +94,19 @@ Commands
   cleanup    Delete ticket attachments no comment or description references
   prune      Delete wiki page attachments the current table no longer uses
   bug        Give a bug its own proof: copy one failed case's media, attach
-             it, embed it in the bug's description, link it to the parent
+             it, embed it in the bug's description, link it to the parent,
+             and add a redacted HAR built from the case's trace
   all        summary, attach, plan, mark-pass (or cycles), comment, notify
 
 Options
   --ticket <key>       Ticket key. Defaults to $TICKET.
   --summary <text>     One-line description for the page and the chat card.
   --comment-id <id>    Update an existing comment instead of posting a new one.
+  --uploaded-before <date>
+                       comment: embed only attachments uploaded before this
+                       date or time, to rebuild an earlier run's comment after
+                       a retest re-uploaded the same filenames. By default each
+                       filename resolves to its newest upload.
   --traces             attach: also upload each referenced case's trace.zip.
   --only <text>        attach: only files whose name contains <text>.
   --target <name>      plan / prune: wiki destination (CONFLUENCE_<NAME>_*).
@@ -109,6 +120,8 @@ Options
   --from <key>         bug: the ticket whose run found the failure.
   --tc <TC-00N>        bug: the failed case to take the proof from.
   --files <a,b>        bug: a manual finding's media, already in src/evidence/<bug>/.
+                       A DevTools-exported .har goes in the list too; it is
+                       uploaded as it is, so strip auth headers and cookies first.
   --dry-run            Print what would happen and write nothing.
 
 Providers are configured in .env.publish (see .env.publish.example).
@@ -127,6 +140,10 @@ try {
 }
 const summaryText = flag("summary") ?? "";
 const commentId = flag("comment-id");
+const uploadedBeforeRaw = flag("uploaded-before");
+const uploadedBefore = uploadedBeforeRaw ? Date.parse(uploadedBeforeRaw) : undefined;
+if (uploadedBeforeRaw && Number.isNaN(uploadedBefore))
+	fail(`--uploaded-before: not a date: ${uploadedBeforeRaw}`);
 const target = confluenceTarget(flag("target"));
 const pageId = flag("page-id") ?? config.confluence.pageId;
 
@@ -145,7 +162,12 @@ function section(title) {
 }
 
 function loadTable(key = ticket) {
-	const table = mergeRuns(readResults(key));
+	const merged = mergeRuns(readResults(key));
+	const plan = planFile(key, key === ticket ? flag("plan") : undefined);
+	const table = {
+		...merged,
+		rows: fs.existsSync(plan) ? withPlan(merged.rows, readPlan(plan)) : merged.rows,
+	};
 	const totals = { pass: 0, fail: 0, skipped: 0 };
 	for (const row of table.rows) {
 		for (const result of Object.values(row.results)) {
@@ -192,7 +214,7 @@ async function cmdComment(table) {
 	}
 
 	const names = referencedMedia(ticket, table.rows).map((entry) => entry.name);
-	const uuids = await jira.mediaUuidsByFilename(ticket, names, { dryRun });
+	const uuids = await jira.mediaUuidsByFilename(ticket, names, { dryRun, uploadedBefore });
 	const missing = names.filter((name) => !uuids.has(name));
 	if (missing.length) {
 		log.warn(`not attached yet, so not embedded: ${missing.join(", ")}`);
@@ -303,6 +325,12 @@ function unverifiedCases(cases) {
 			);
 			continue;
 		}
+		if ((entry.layer ?? "ui") !== row.layer) {
+			problems.push(
+				`${entry.tc}: planned as ${entry.layer ?? "ui"} but "${entry.test}" is in ${row.file} (${row.layer})`,
+			);
+			continue;
+		}
 		const statuses = Object.values(row.results).map((result) => result.status);
 		if (!statuses.some((status) => status === "Pass" || status === "Fail")) {
 			problems.push(`${entry.tc}: "${entry.test}" was skipped on every environment`);
@@ -351,21 +379,29 @@ async function cmdMarkPass(table) {
 		: [];
 	const withTitles = {
 		...saved,
-		cases: saved.cases.map((entry) => ({
-			...entry,
-			test: plan.find((p) => p.tc === entry.tc)?.test ?? entry.test,
-		})),
+		cases: saved.cases.map((entry) => {
+			const planned = plan.find((p) => p.tc === entry.tc);
+			return {
+				...entry,
+				test: planned?.test ?? entry.test,
+				layer: planned?.layer ?? entry.layer,
+			};
+		}),
 	};
 	for (const env of table.environments) {
 		const recorded = await testmgmt.markResults(
 			{ state: withTitles, rows: table.rows, env },
 			{ dryRun },
 		);
-		const missed = withTitles.cases
-			.filter((entry) => !recorded.includes(entry.tc))
-			.map((entry) => entry.tc);
+		const missed = withTitles.cases.filter((entry) => !recorded.includes(entry.tc));
+		const missedUi = missed.filter((entry) => entry.layer !== "api").map((entry) => entry.tc);
+		const missedApi = missed.filter((entry) => entry.layer === "api").map((entry) => entry.tc);
 		log.ok(`${env}: ${recorded.length} result(s) recorded`);
-		if (missed.length) log.warn(`${env}: no automated result for ${missed.join(", ")}`);
+		if (missedUi.length) log.warn(`${env}: no automated result for ${missedUi.join(", ")}`);
+		if (missedApi.length)
+			log.info(
+				`${env}: API case(s) ${missedApi.join(", ")} did not run here — expected where only @smoke runs`,
+			);
 	}
 	const planned = new Set(withTitles.cases.map((entry) => entry.test).filter(Boolean));
 	const extra = table.rows.filter((row) => !planned.has(row.title)).map((row) => row.title);
@@ -488,8 +524,13 @@ async function cmdBug() {
 
 	const dir = bundleDir(ticket);
 	let copies;
+	let hars;
 	if (files) {
-		copies = manualMedia(files);
+		const listed = manualMedia(files);
+		copies = listed.filter((entry) => !isHar(entry.name));
+		hars = listed
+			.filter((entry) => isHar(entry.name))
+			.map((entry) => ({ ...entry, har: JSON.parse(fs.readFileSync(entry.file, "utf8")) }));
 	} else {
 		const parentTable = loadTable(parent);
 		const row = parentTable.rows.find((candidate) => candidate.tc === tc);
@@ -499,30 +540,95 @@ async function cmdBug() {
 		if (!media.length)
 			fail(`${parent} ${tc} ("${row.title}") has no *-FAILED media — did it fail?`);
 		copies = media.map((entry) => ({ name: entry.name, file: path.join(dir, entry.name) }));
+		hars = harsFromTraces(failedTraces(parent, row), dir);
 		if (dryRun) {
 			copies.forEach((entry) => log.plan(`copy ${entry.name} → ${dir}/`));
+			hars.forEach((entry) => log.plan(`build ${entry.name} ← ${entry.trace}`));
 			copies = media;
 		} else {
 			fs.mkdirSync(dir, { recursive: true });
 			media.forEach((entry, i) => fs.copyFileSync(entry.file, copies[i].file));
-			log.ok(`copied ${copies.length} file(s) into ${dir}`);
+			hars.forEach((entry) =>
+				fs.writeFileSync(entry.file, `${JSON.stringify(entry.har, null, 2)}\n`),
+			);
+			log.ok(`copied ${copies.length} file(s) and built ${hars.length} HAR(s) into ${dir}`);
 		}
 	}
+	if (!hars.length) log.info("no trace or .har — the bug gets no network capture");
+	for (const entry of hars) {
+		const failing = failures(entry.har);
+		log.info(
+			`${entry.name}: ${entry.har.log.entries.length} request(s), ${failing.length} failing`,
+		);
+	}
 
+	const uploads = [...copies, ...hars];
 	if (config.tracker !== "jira") {
 		log.warn(
-			`tracker "${config.tracker}" cannot host attachments — attach ${copies.map((c) => c.name).join(", ")} by hand`,
+			`tracker "${config.tracker}" cannot host attachments — attach ${uploads.map((c) => c.name).join(", ")} by hand`,
 		);
 		return;
 	}
-	await jira.attach(ticket, copies, { dryRun });
+	await jira.attach(ticket, uploads, { dryRun });
 	const uuids = await jira.mediaUuidsByFilename(
 		ticket,
-		copies.map((c) => c.name),
+		uploads.map((c) => c.name),
 		{ dryRun },
 	);
-	await jira.embedInDescription(ticket, uuids, { dryRun });
+	const media = new Map(
+		copies.filter((c) => uuids.has(c.name)).map((c) => [c.name, uuids.get(c.name)]),
+	);
+	const extra = hars
+		.filter((entry) => uuids.has(entry.name))
+		.flatMap((entry) => networkCaptureNote(entry, uuids.get(entry.name)));
+	await jira.embedInDescription(ticket, media, { dryRun, extra });
 	await jira.linkIssues(ticket, parent, { dryRun });
+}
+
+const isHar = (name) => /\.har$/i.test(name);
+
+/** One redacted HAR per failed environment, named `<BUG-KEY>-<env>.har`. */
+function harsFromTraces(traces, dir) {
+	const names = new Set();
+	return traces.map((trace) => {
+		let name = `${ticket}-${trace.env}.har`;
+		for (let n = 2; names.has(name); n++) name = `${ticket}-${trace.env}-${n}.har`;
+		names.add(name);
+		return { name, file: path.join(dir, name), trace: trace.name, har: traceToHar(trace.file) };
+	});
+}
+
+/** The HAR as a file card under a note listing each failing call, for the developers. */
+function networkCaptureNote(entry, uuid) {
+	const failing = failures(entry.har);
+	return [
+		adf.paragraph(
+			adf.strong("Network capture: "),
+			adf.code(entry.name),
+			adf.text(
+				entry.trace
+					? " — built from the Playwright trace of the failing run above. Import it in DevTools → Network. Auth headers, cookies and tokens are redacted."
+					: " — exported from the browser for this finding. Import it in DevTools → Network.",
+			),
+		),
+		failing.length
+			? adf.bulletList(
+					failing.map((call) =>
+						adf.paragraph(
+							adf.code(`${call.method} ${call.path}`),
+							adf.text(` → ${call.status}`),
+							call.response ? [adf.text(" "), adf.code(call.response)] : [],
+							call.bodyMissing
+								? adf.text(
+										" (request body not in the capture — Playwright doesn't record multipart/form-data)",
+									)
+								: undefined,
+						),
+					),
+				)
+			: undefined,
+		adf.mediaFile(uuid),
+	].filter(Boolean);
 }
 
 /** Commands that read this ticket's run results take the table; the rest do not. */

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 import { config, jiraAuthHeader } from "../config.mjs";
+import { groupsOf, sectionsByLayer } from "../evidence.mjs";
 import { expectOk, log } from "../logger.mjs";
 
 /**
@@ -61,32 +62,59 @@ function embed(name) {
 	return `<p><ac:link>${attachment}</ac:link></p>`;
 }
 
+/**
+ * Each section's table opens with its name centred across every column, then
+ * the column headings, then a bold row per feature group above its cases.
+ */
 export function buildStorage({ ticket, summary, environments, rows, status, links }) {
-	const header = ["TC", "Case", ...environments]
-		.map((label) => `<th>${escape(label)}</th>`)
-		.join("");
-	const body = rows
-		.map((row) => {
-			const cells = environments
-				.map((env) => {
-					const result = row.results[env];
-					if (!result) return "<td>—</td>";
-					const media = (result.media ?? []).map(embed).join("");
-					const error = result.error ? `<p><em>${escape(result.error)}</em></p>` : "";
-					return `<td><p>${escape(result.status)}</p>${media}${error}</td>`;
-				})
-				.join("");
-			return `<tr><td>${escape(row.tc)}</td><td>${escape(row.title)}</td>${cells}</tr>`;
-		})
-		.join("");
+	const planned = rows.some((row) => row.steps);
+	const headings = [
+		"TC",
+		"Scenario",
+		...(planned ? ["Steps", "Expected result"] : []),
+		...environments,
+	];
+	const width = headings.length;
+	const header = `<tr>${headings.map((label) => `<th><p><strong>${escape(label)}</strong></p></th>`).join("")}</tr>`;
+	const titleRow = (title) =>
+		`<tr><th colspan="${width}"><p style="text-align: center;"><strong>${escape(title)}</strong></p></th></tr>`;
+	const groupRow = (name) =>
+		`<tr><td colspan="${width}"><p><strong>${escape(name)}</strong></p></td></tr>`;
+	const steps = (row) =>
+		row.steps?.length
+			? `<ol>${row.steps.map((step) => `<li>${escape(step)}</li>`).join("")}</ol>`
+			: "<p>—</p>";
+	const caseRow = (row) => {
+		const cells = environments
+			.map((env) => {
+				const result = row.results[env];
+				if (!result) return "<td><p>—</p></td>";
+				const media = (result.media ?? []).map(embed).join("");
+				const error = result.error ? `<p><em>${escape(result.error)}</em></p>` : "";
+				return `<td><p>${escape(result.status)}</p>${media}${error}</td>`;
+			})
+			.join("");
+		const plan = planned
+			? `<td>${steps(row)}</td><td><p>${escape(row.expected ?? "—")}</p></td>`
+			: "";
+		return `<tr><td><p>${escape(row.tc)}</p></td><td><p>${escape(row.scenario ?? row.title)}</p></td>${plan}${cells}</tr>`;
+	};
+	const table = (section) =>
+		`<table data-layout="full-width"><thead>${section.title ? titleRow(section.title) : ""}${header}</thead><tbody>${groupsOf(
+			section.rows,
+		)
+			.map((group) => (group.name ? groupRow(group.name) : "") + group.rows.map(caseRow).join(""))
+			.join("")}</tbody></table>`;
 
 	return [
 		`<p><strong>Ticket:</strong> ${escape(ticket)}<br/><strong>Overall:</strong> ${escape(status)}</p>`,
 		summary ? `<p>${escape(summary)}</p>` : "",
-		"<h2>Test Scenario</h2>",
-		`<table><tbody><tr>${header}</tr>${body}</tbody></table>`,
+		"<h3>Test Scenario</h3>",
+		...sectionsByLayer(rows).map(
+			(section) => (section.title ? `<h4>${escape(section.title)}</h4>` : "") + table(section),
+		),
 		links?.length
-			? `<h2>Links</h2><ul>${links
+			? `<h3>Links</h3><ul>${links
 					.map((l) => `<li><a href="${escape(l.url)}">${escape(l.title)}</a></li>`)
 					.join("")}</ul>`
 			: "",

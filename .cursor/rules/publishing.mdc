@@ -25,7 +25,19 @@ Publishing goes through `scripts/publish.mjs`. Providers come from
   `publish.mjs bug --ticket <BUG-KEY> --from <key> --tc <TC-00N>` copies that
   case's `*-FAILED.png` and `*-FAILED.webm` into `src/evidence/<BUG-KEY>/`,
   attaches them, embeds them in the bug's description, and links the bug to the
-  ticket under test. Proof left only on the parent ticket is incomplete.
+  ticket under test. It also builds a redacted `<BUG-KEY>-<env>.har` from the
+  case's `*-FAILED-trace.zip` and embeds it under a **Network capture** note
+  listing the failing calls. A manual finding's DevTools HAR goes in `--files`,
+  with auth headers and cookies stripped first, since it is uploaded as it is.
+  Proof left only on the parent ticket is incomplete.
+- **UI Tests, then API Tests.** When a run has `*.api.spec.ts` cases, the
+  summary, comment and wiki plan split into those two sections, with TC ids
+  running on from the UI rows. On the wiki plan and the Jira comment each
+  section's table has a title row, then `TC | Scenario | Steps | Expected
+  result | <env>…`, then a bold row per feature group, which is the spec's
+  `test.describe` title. Name describes as feature areas, since they become
+  those group rows. An API case's proof is its `-response.json`, shown as a
+  file card.
 - **Links go in one place.** The publish run gathers the wiki page and the test
   cycles into a single comment. Do not scatter them or repeat them on the
   results table.
