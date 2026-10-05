@@ -56,7 +56,8 @@ need no approval.
 - `.claude/commands/`, `.cursor/commands/` — the `e2e-ticket` pipeline
 - `.claude/rules/`, `.cursor/rules/` — conventions, environment approval, evidence, publishing
 
-Agents, commands, rules and hooks exist in both `.claude/` and `.cursor/` and
-must stay identical: edit both copies in the same change. Skills are edited
-once, in `.agents/skills/`. `npm run check:tool-sync` fails when a pair differs,
-a file exists on one side only, or a skill link is missing.
+`.claude/` is the source for agents, commands, rules and hooks; `.cursor/` is a
+copy. Edit under `.claude/`, then run `npm run sync:ai` — a direct edit to
+`.cursor/` is overwritten on the next sync. Skills are edited once, in
+`.agents/skills/`. `npm run check:tool-sync` fails on a stale copy or a missing
+skill link.

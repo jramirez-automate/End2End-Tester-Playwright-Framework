@@ -9,6 +9,6 @@ The conventions contract for this repository is `AGENTS.md`. Read it first.
 
 Subagents live in `.claude/agents/`, the ticket pipeline in
 `.claude/commands/e2e-ticket.md`, and shared skills in `.agents/skills/`
-(symlinked into `.claude/skills/`). Agents, commands, rules and hooks have an
-identical copy in `.cursor/`: edit both in the same change.
+(symlinked into `.claude/skills/`). `.claude/` is the source: edit there, then
+`npm run sync:ai` copies agents, commands, rules and hooks into `.cursor/`.
 `npm run check:tool-sync` fails when the two drift apart.
