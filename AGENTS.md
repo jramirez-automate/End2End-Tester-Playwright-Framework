@@ -54,7 +54,10 @@ need no approval.
 - `.agents/skills/` — shared skills, symlinked into `.claude/skills/` and `.cursor/skills/`
 - `.claude/agents/`, `.cursor/agents/` — explorer, runner, evidence, publisher
 - `.claude/commands/`, `.cursor/commands/` — the `e2e-ticket` pipeline
-- `.cursor/rules/` — conventions, environment approval, evidence, publishing
+- `.claude/rules/`, `.cursor/rules/` — conventions, environment approval, evidence, publishing
 
-Both tool trees must say the same thing. `npm run check:tool-sync` fails when they
-drift; edit both copies in one change.
+`.claude/` is the source for agents, commands, rules and hooks; `.cursor/` is a
+copy. Edit under `.claude/`, then run `npm run sync:ai` — a direct edit to
+`.cursor/` is overwritten on the next sync. Skills are edited once, in
+`.agents/skills/`. `npm run check:tool-sync` fails on a stale copy or a missing
+skill link.

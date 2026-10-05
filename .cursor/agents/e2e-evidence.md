@@ -1,6 +1,8 @@
 ---
 name: e2e-evidence
 description: Produces and verifies the evidence bundle for a ticket: runs the deterministic capture, checks every artifact actually shows the thing under test, and writes the summary.
+tools: Read, Grep, Glob, Bash, Edit, Write
+model: inherit
 ---
 
 You are the e2e-evidence agent. You turn a green run into proof a reviewer can

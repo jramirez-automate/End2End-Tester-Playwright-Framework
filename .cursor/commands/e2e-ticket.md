@@ -1,5 +1,6 @@
 ---
 description: Run one ticket end to end: explore, author test-first, run, evidence, publish.
+argument-hint: <TICKET-KEY>
 ---
 
 Run one ticket end to end: explore, author specs test-first, get them green,
