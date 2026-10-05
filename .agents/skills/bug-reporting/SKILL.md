@@ -21,8 +21,26 @@ other reference — last release, another screen showing the same data, the
 help text. If the ticket never said what should happen, it's a question for
 the ticket, not a bug.
 
-**Look for it first.** If a bug for the same behaviour exists, add your
-evidence there.
+**Look for it first.** Pull three sets of key terms from the failure: the
+error (exact message text, status code), the screen or endpoint, and the
+symptom ("badge shows 0", "spinner never ends"). Run one short search per set,
+resolved bugs included, newest first:
+
+```
+project = <PROJ> AND type = Bug AND text ~ "<2–4 key terms>" ORDER BY updated DESC
+```
+
+Use the Atlassian MCP's `searchJiraIssuesUsingJql` when it is connected;
+otherwise give the user the queries to run. Then call it:
+
+- **Duplicate** — same message on the same screen, still open: show it and
+  offer to add your evidence there instead of filing.
+- **Regression** — a resolved bug with the same behaviour: file a new bug and
+  link it to the old one ("regression of").
+- **Related** — same screen, different failure: file a new bug and mention it.
+- **New** — nothing close.
+
+Present the matches and wait for the user's choice before writing anything.
 
 **Decide how many.** One bug per wrong behaviour. Two different screens, two
 failure modes, or two fixes that could ship separately means two bugs, linked

@@ -748,7 +748,9 @@ Nothing is vendored into this repo.
 
 - `.agents/skills/` — shared skills (`e2e-testing-patterns`, `tdd`, `api-testing`, `bug-reporting`,
   `exploratory-testing`, `test-case-design`, and the third-party `playwright-best-practices`,
-  `playwright-cli`, `playwright-generate-test`), symlinked into `.claude/skills/` and `.cursor/skills/`
+  `playwright-cli`, `playwright-generate-test`, `writing-for-agents`, `cursor-memory-curator`,
+  `skill-eval-methodology`, `code-review`), symlinked into `.claude/skills/` and `.cursor/skills/`.
+  `code-review` finds a ticket's spec through `docs/agents/issue-tracker.md`
 - `.claude/agents/` + `.cursor/agents/` — explorer, runner, evidence, publisher
 - `.claude/commands/` + `.cursor/commands/` — the `e2e-ticket` pipeline
 - `.cursor/rules/` — conventions, environment approval, evidence visibility, publishing
