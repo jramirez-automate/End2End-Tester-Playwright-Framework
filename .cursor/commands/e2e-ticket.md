@@ -23,6 +23,13 @@ If the ticket key above is empty or is not a key like `ABC-123`, stop and ask
 for the key and its acceptance criteria. Nothing here fetches a ticket, so ask
 the user to paste the criteria.
 
+If the ticket's summary, description, comments or links mention a Zendesk ticket
+(`Zendesk ticket #1546818`, `ZD: 1342215`, an `…zendesk.com/agent/tickets/…` URL), tell
+the user the id and ask them to print that ticket as a PDF and upload it here for
+additional context, so the checklist doesn't miss anything from the customer's report. Read it
+and fold the symptom, repro steps and expected behaviour into the checklist. If they decline,
+continue with what you have. Do not edit the ticket's description with it unless asked.
+
 Read the ticket. Turn it into a numbered checklist of testable statements. Stop
 and ask if a requirement has no observable outcome. Check `COVERAGE.md`: if this
 is already covered, say so and ask what to add.
