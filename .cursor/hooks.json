@@ -4,7 +4,7 @@
     "sessionStart": [
       {
         "type": "command",
-        "command": "node scripts/sync-ai-mirrors.mjs --check --quiet",
+        "command": "node scripts/check-tool-sync.mjs --quiet",
         "timeout": 30
       }
     ]

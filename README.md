@@ -74,9 +74,8 @@ survives its second quarter are usually left as an exercise:
 - **Data discipline** — unique entities via `e2eName()`, LIFO `CleanupRegistry` teardown.
 - **Lint, format, secret scan** — ESLint (Playwright plugin on specs) and Prettier, with a Husky
   pre-commit hook that scans staged files for secrets and runs lint-staged. CI runs the same.
-- **AI tooling** — `.claude/` agents, commands, rules and hooks copied into `.cursor/` by
-  `npm run sync:ai`, plus shared skills, so Cursor and Claude Code run the same pipeline;
-  `npm run check:tool-sync` fails on drift.
+- **AI tooling** — mirrored `.claude/` and `.cursor/` agents and commands plus shared skills, so
+  Cursor and Claude Code run the same pipeline; `npm run check:tool-sync` fails on drift.
 - **Type safety** — TypeScript throughout; `npm run typecheck` must pass.
 
 ## Framework benefits
@@ -99,9 +98,9 @@ a Playwright tag filtered with `TICKET=<key>`, not a ticket folder.
 End2End-Tester-Playwright-Framework/
 │
 ├── .agents/skills/           # Shared skills, symlinked into .claude/skills and .cursor/skills
-├── .claude/ / .cursor/       # Agents (explorer, runner, evidence, publisher) + /e2e-ticket; .claude is the source
-│   ├── rules/                # conventions, env approval, evidence visibility, publishing
-│   └── hooks                 # skill reminder (Claude prompt hook); hooks.json runs the sync check at session start (Cursor)
+├── .claude/ / .cursor/       # Mirrored agents (explorer, runner, evidence, publisher) + /e2e-ticket
+│   ├── rules/                # (.cursor) conventions, env approval, evidence visibility, publishing
+│   └── hooks                 # skill reminder (.claude), tool-sync check at session start (.cursor)
 ├── .husky/pre-commit         # scan-secrets --staged, then lint-staged
 ├── .github/workflows/e2e.yml # CI: checks + demo suite on push/PR; your envs on demand
 ├── .env.example              # Suite settings template (committed)
@@ -127,7 +126,7 @@ End2End-Tester-Playwright-Framework/
 │   │   └── providers/        # tracker-jira, tracker-github, wiki-confluence, testmgmt-zephyr, chat-webhook
 │   ├── app-source.mjs        # Which checkout APP_SOURCE_DIR points at
 │   ├── scan-secrets.js       # Pre-commit + CI secret scanner
-│   ├── sync-ai-mirrors.mjs   # Copies .claude into .cursor; --check fails on drift or a bad skill link
+│   ├── check-tool-sync.mjs   # Keeps .claude and .cursor saying the same thing
 │   └── fix-deepeval.mjs      # postinstall workaround for a DeepEval packaging bug
 │
 ├── templates/                # UI spec, API spec and page-object scaffolds, test-case plan, chat card
@@ -749,17 +748,13 @@ Nothing is vendored into this repo.
 
 - `.agents/skills/` — shared skills (`e2e-testing-patterns`, `tdd`, `api-testing`, `bug-reporting`,
   `exploratory-testing`, `test-case-design`, and the third-party `playwright-best-practices`,
-  `playwright-cli`, `playwright-generate-test`, `writing-for-agents`, `cursor-memory-curator`,
-  `skill-eval-methodology`, `code-review`), symlinked into `.claude/skills/` and `.cursor/skills/`.
-  `code-review` finds a ticket's spec through `docs/agents/issue-tracker.md`
-- `.claude/agents/` — explorer, runner, evidence, publisher
-- `.claude/commands/` — the `e2e-ticket` pipeline
-- `.claude/rules/` — conventions, environment approval, evidence visibility, publishing
-- `.claude/hooks/` — the skill reminder `.claude/settings.json` runs on test-related prompts
-- `.cursor/` holds a copy of those four, made by `npm run sync:ai`. Edit `.claude/`, then sync; a
-  direct edit to `.cursor/` is overwritten. Platform files are not copied: `.claude/settings.json`,
-  `.cursor/hooks.json` (runs the sync check at session start) and `.cursor/mcp.json`
-- `npm run check:tool-sync` fails on a stale copy, or a skill that isn't linked from both trees
+  `playwright-cli`, `playwright-generate-test`), symlinked into `.claude/skills/` and `.cursor/skills/`
+- `.claude/agents/` + `.cursor/agents/` — explorer, runner, evidence, publisher
+- `.claude/commands/` + `.cursor/commands/` — the `e2e-ticket` pipeline
+- `.cursor/rules/` — conventions, environment approval, evidence visibility, publishing
+- `.claude/settings.json` nudges the e2e skill on test-related prompts; `.cursor/hooks.json` runs
+  the sync check at session start
+- `npm run check:tool-sync` fails when the two trees drift — edit both copies in one change
 
 `skills-lock.json` pins the source and hash of each vendored third-party skill. Where one
 disagrees with `AGENTS.md`, `AGENTS.md` wins.
@@ -862,6 +857,5 @@ const name = "My Order";         // WRONG — collisions and leftover rows
 | `npm run lint` / `lint:fix` | ESLint |
 | `npm run format` / `format:check` | Prettier |
 | `npm run scan:secrets` / `:staged` / `:self-test` | Secret scanner |
-| `npm run sync:ai` | Copy `.claude` agents, commands, rules and hooks into `.cursor` |
 | `npm run check:tool-sync` | Fail when `.claude` and `.cursor` drift |
 | `npm run -s app-source` | Show which checkout `APP_SOURCE_DIR` resolves to |
