@@ -37,6 +37,7 @@
 		"publish:bug": "node scripts/publish.mjs bug",
 		"check:tool-sync": "node scripts/sync-ai-mirrors.mjs --check",
 		"sync:ai": "node scripts/sync-ai-mirrors.mjs --from=claude",
+		"sync:child": "node scripts/sync-child.mjs",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix",
 		"format": "prettier --write \"**/*.{ts,mts,mjs,js,json,yml}\"",

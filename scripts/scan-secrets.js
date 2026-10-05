@@ -10,7 +10,7 @@
  * security scanner. Never modifies files.
  *
  * Usage:
- *   node scripts/scan-secrets.js               # scan all git-tracked files
+ *   node scripts/scan-secrets.js               # scan tracked + untracked-not-ignored files
  *   node scripts/scan-secrets.js --staged      # scan only staged files (pre-commit)
  *   node scripts/scan-secrets.js --self-test   # verify detection logic, then exit
  *
@@ -93,9 +93,14 @@ function mask(value) {
 	return `${value.slice(0, 4)}…${value.slice(-4)} (${value.length} chars)`;
 }
 
+// Tracked files plus untracked ones that are not gitignored — everything that could
+// be committed next, so a new file is covered before its first `git add`.
 function gitTrackedFiles() {
 	try {
-		return execSync("git ls-files", { cwd: ROOT, encoding: "utf-8" })
+		return execSync("git ls-files --cached --others --exclude-standard", {
+			cwd: ROOT,
+			encoding: "utf-8",
+		})
 			.split(/\r?\n/)
 			.filter(Boolean);
 	} catch {
