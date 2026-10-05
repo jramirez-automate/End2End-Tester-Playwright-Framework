@@ -747,7 +747,8 @@ Nothing is vendored into this repo.
 ### Tooling layout
 
 - `.agents/skills/` — shared skills (`e2e-testing-patterns`, `tdd`, `api-testing`, `bug-reporting`,
-  `exploratory-testing`, `test-case-design`), symlinked into `.claude/skills/` and `.cursor/skills/`
+  `exploratory-testing`, `test-case-design`, and the third-party `playwright-best-practices`,
+  `playwright-cli`, `playwright-generate-test`), symlinked into `.claude/skills/` and `.cursor/skills/`
 - `.claude/agents/` + `.cursor/agents/` — explorer, runner, evidence, publisher
 - `.claude/commands/` + `.cursor/commands/` — the `e2e-ticket` pipeline
 - `.cursor/rules/` — conventions, environment approval, evidence visibility, publishing
@@ -755,8 +756,8 @@ Nothing is vendored into this repo.
   the sync check at session start
 - `npm run check:tool-sync` fails when the two trees drift — edit both copies in one change
 
-`skills-lock.json` lists useful third-party Playwright skills. They aren't vendored; install them
-into `.agents/skills/` if you want them.
+`skills-lock.json` pins the source and hash of each vendored third-party skill. Where one
+disagrees with `AGENTS.md`, `AGENTS.md` wins.
 
 ## Best practices
 
