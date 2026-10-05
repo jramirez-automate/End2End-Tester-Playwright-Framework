@@ -33,6 +33,8 @@
  *   node scripts/sync-child.mjs ../End2EndTester --apply      # write add/update/remove
  *   node scripts/sync-child.mjs ../End2EndTester --apply --take=src/utils/cleanup.ts
  *   node scripts/sync-child.mjs ../End2EndTester --apply --overwrite   # every conflict
+ *   node scripts/sync-child.mjs ../End2EndTester --apply --require-manifest   # CI: refuse a child with no manifest
+ *   node scripts/sync-child.mjs --hook   # husky post-commit/post-merge; children from .sync-children
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -43,6 +45,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST = ".framework-sync.json";
+const WRITES = ["add", "update", "remove"];
 
 const INCLUDE = [
 	".agents/skills/",
@@ -202,41 +205,36 @@ function packageHints(childRoot) {
 	return hints;
 }
 
-function main() {
-	const target = process.argv.slice(2).find((a) => !a.startsWith("--"));
-	if (!target) {
-		console.error(
-			"Usage: node scripts/sync-child.mjs <child-repo> [--diff] [--apply [--overwrite]]",
+function fail(message) {
+	const err = new Error(message);
+	err.syncChild = true;
+	throw err;
+}
+
+/** Sync one child. Returns the number of files written. */
+function sync(childRoot, { apply, overwrite, take, diff, requireManifest, quiet }) {
+	if (!fs.existsSync(childRoot)) fail(`${childRoot} not found`);
+	if (!fs.existsSync(path.join(childRoot, ".git"))) fail(`${childRoot} is not a git repository`);
+	if (childRoot === ROOT) fail("the child must be a different repository");
+	if (requireManifest && !fs.existsSync(path.join(childRoot, MANIFEST))) {
+		fail(
+			`${childRoot} has no ${MANIFEST}; do the first sync by hand (README → Syncing a child repo)`,
 		);
-		process.exit(1);
-	}
-	const childRoot = path.resolve(target);
-	if (!fs.existsSync(path.join(childRoot, ".git"))) {
-		console.error(`[sync-child] ${childRoot} is not a git repository`);
-		process.exit(1);
-	}
-	if (childRoot === ROOT) {
-		console.error("[sync-child] the child must be a different repository");
-		process.exit(1);
 	}
 
-	const apply = hasFlag("--apply");
-	const overwrite = hasFlag("--overwrite");
 	const branch = git(childRoot, ["branch", "--show-current"]).trim();
 	if (apply && ["main", "master", ""].includes(branch)) {
-		console.error(
-			`[sync-child] child is on "${branch || "detached HEAD"}"; create a branch there first`,
-		);
-		process.exit(1);
+		fail(`child is on "${branch || "detached HEAD"}"; create a branch there first`);
 	}
+	const commit = git(ROOT, ["rev-parse", "HEAD"]).trim();
+	const manifest = readManifest(childRoot);
+	const { fw, rows } = plan(childRoot, manifest);
+	if (quiet && !rows.some((r) => WRITES.includes(r.kind))) return 0;
+
 	const dirty = git(ROOT, ["status", "--porcelain", "--", ...INCLUDE]).trim();
 	if (dirty) {
 		console.warn("[sync-child] framework has uncommitted changes in synced paths; using HEAD only");
 	}
-
-	const commit = git(ROOT, ["rev-parse", "HEAD"]).trim();
-	const manifest = readManifest(childRoot);
-	const { fw, rows } = plan(childRoot, manifest);
 
 	console.log(`[sync-child] framework ${commit.slice(0, 7)} -> ${childRoot} (${branch})`);
 	if (manifest.commit) {
@@ -253,7 +251,7 @@ function main() {
 	}
 	if (!rows.some((r) => r.kind !== "local")) console.log("\n[sync-child] child is up to date");
 
-	if (hasFlag("--diff")) {
+	if (diff) {
 		for (const r of rows) if (r.kind !== "local") showDiff(childRoot, r);
 	}
 
@@ -267,16 +265,12 @@ function main() {
 
 	if (!apply) {
 		console.log("\n[sync-child] dry run; nothing written. Re-run with --apply to write.");
-		return;
+		return 0;
 	}
 
-	const take = process.argv
-		.filter((a) => a.startsWith("--take="))
-		.map((a) => a.slice("--take=".length));
 	const writable = rows.filter(
 		(r) =>
-			["add", "update", "remove"].includes(r.kind) ||
-			(r.kind === "conflict" && (overwrite || matches(r.rel, take))),
+			WRITES.includes(r.kind) || (r.kind === "conflict" && (overwrite || matches(r.rel, take))),
 	);
 	for (const r of writable) write(childRoot, r);
 
@@ -287,15 +281,85 @@ function main() {
 		if (child?.sha === sha) files[rel] = sha;
 		else if (manifest.files[rel]) files[rel] = manifest.files[rel];
 	}
-	const next = { local: manifest.local, commit, files };
-	fs.writeFileSync(path.join(childRoot, MANIFEST), `${JSON.stringify(next, null, "\t")}\n`);
+	const recorded = JSON.stringify(Object.entries(manifest.files).sort());
+	if (writable.length || recorded !== JSON.stringify(Object.entries(files).sort())) {
+		const next = { local: manifest.local, commit, files };
+		fs.writeFileSync(path.join(childRoot, MANIFEST), `${JSON.stringify(next, null, "\t")}\n`);
+		console.log(`\n[sync-child] wrote ${writable.length} file(s) and ${MANIFEST}`);
+	}
 
 	const skipped = rows.filter((r) => r.kind === "conflict" && !writable.includes(r)).length;
-	console.log(`\n[sync-child] wrote ${writable.length} file(s) and ${MANIFEST}`);
 	if (skipped) {
 		console.log(
 			`[sync-child] ${skipped} conflict(s) left as they are: add them to "local" or re-run with --overwrite`,
 		);
+	}
+	return writable.length;
+}
+
+/**
+ * git post-commit / post-merge: apply into every checkout listed in the
+ * gitignored `.sync-children`, but only once the change is on main. Never
+ * fails the git command that triggered it.
+ */
+function hook() {
+	if (git(ROOT, ["branch", "--show-current"]).trim() !== "main") return;
+	const list = path.join(ROOT, ".sync-children");
+	if (!fs.existsSync(list)) return;
+	const children = fs
+		.readFileSync(list, "utf8")
+		.split("\n")
+		.map((l) => l.trim())
+		.filter((l) => l && !l.startsWith("#"));
+	for (const entry of children) {
+		const childRoot = path.resolve(ROOT, entry);
+		try {
+			if (!fs.existsSync(path.join(childRoot, ".git"))) fail("not found or not a git repository");
+			const pending = plan(childRoot, readManifest(childRoot)).rows.filter((r) =>
+				WRITES.includes(r.kind),
+			).length;
+			if (!pending) continue;
+			const branch = git(childRoot, ["branch", "--show-current"]).trim();
+			if (["main", "master", ""].includes(branch)) {
+				console.log(
+					`[sync-child] ${entry} is on "${branch || "detached HEAD"}"; ${pending} framework change(s) wait until it is on a branch and the framework updates again.`,
+				);
+				continue;
+			}
+			const n = sync(childRoot, { apply: true, take: [], requireManifest: true, quiet: true });
+			if (n) console.log(`[sync-child] ${entry}: ${n} file(s) ready to commit on ${branch}`);
+		} catch (err) {
+			console.warn(`[sync-child] ${entry}: ${err.message.split("\n")[0]}`);
+		}
+	}
+}
+
+function main() {
+	if (hasFlag("--hook")) {
+		hook();
+		return;
+	}
+	const target = process.argv.slice(2).find((a) => !a.startsWith("--"));
+	if (!target) {
+		console.error(
+			"Usage: node scripts/sync-child.mjs <child-repo> [--diff] [--apply [--take=<path>] [--overwrite]] [--require-manifest]",
+		);
+		process.exit(1);
+	}
+	try {
+		sync(path.resolve(target), {
+			apply: hasFlag("--apply"),
+			overwrite: hasFlag("--overwrite"),
+			take: process.argv
+				.filter((a) => a.startsWith("--take="))
+				.map((a) => a.slice("--take=".length)),
+			diff: hasFlag("--diff"),
+			requireManifest: hasFlag("--require-manifest"),
+		});
+	} catch (err) {
+		if (!err.syncChild) throw err;
+		console.error(`[sync-child] ${err.message}`);
+		process.exit(1);
 	}
 }
 

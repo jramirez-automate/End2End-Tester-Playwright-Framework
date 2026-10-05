@@ -788,6 +788,19 @@ then is a **conflict** and is left alone. Keep the child's version for good by a
 file or `--overwrite` for every conflict. Commit
 `.framework-sync.json` in the child with the synced files.
 
+Once a child has its first sync committed, updates flow on their own:
+
+- **Locally.** List child checkouts in the gitignored `.sync-children`, one path per line. After
+  a commit or pull lands on `main`, the `post-commit` / `post-merge` hooks apply new framework
+  changes into each child that is on a branch, ready for you to commit there. A child on `main`
+  is skipped with a notice. The hook never fails the git command.
+- **In CI.** `.github/workflows/sync-child.yml` runs on every push to `main` that touches a synced
+  path. It clones End2EndTester, applies the sync, and keeps one Bitbucket pull request open from
+  the bot-owned `framework-sync` branch, rebuilt from the child's `main` each run. It needs a
+  Bitbucket repository access token (Repositories: write, Pull requests: write) in the
+  `BITBUCKET_SYNC_TOKEN` secret and skips with a warning without it. Run it by hand from the
+  Actions tab; manual runs default to a dry run.
+
 ## Best practices
 
 ### Locators

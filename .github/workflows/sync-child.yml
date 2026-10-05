@@ -1,0 +1,130 @@
+name: sync-child
+
+# Copies framework updates on main into End2EndTester (Bitbucket) and keeps one
+# pull request open there with the result. The child's .framework-sync.json
+# decides what is copied; see README → Syncing a child repo.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".agents/skills/**"
+      - ".claude/**"
+      - ".cursor/**"
+      - ".husky/**"
+      - ".prettierrc"
+      - ".prettierignore"
+      - "eslint.config.mjs"
+      - "evals/**"
+      - "evidence-reporter.ts"
+      - "scripts/**"
+      - "skills-lock.json"
+      - "src/fixtures.ts"
+      - "src/types/**"
+      - "src/utils/**"
+      - "templates/**"
+      - "tsconfig.json"
+      - ".github/workflows/sync-child.yml"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the plan only; push nothing and open no pull request
+        type: boolean
+        default: true
+
+concurrency:
+  group: sync-child
+  cancel-in-progress: false
+
+jobs:
+  end2endtester:
+    runs-on: ubuntu-latest
+    env:
+      CHILD_WORKSPACE: damstratechnology
+      CHILD_REPO: end2endtester
+      CHILD_BASE: main
+      SYNC_BRANCH: framework-sync
+      BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_SYNC_TOKEN }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+    steps:
+      - id: token
+        run: |
+          if [ -z "$BITBUCKET_TOKEN" ]; then
+            echo "::warning::BITBUCKET_SYNC_TOKEN is not set; skipping the End2EndTester sync"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.token.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.token.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Clone child
+        if: steps.token.outputs.ready == 'true'
+        run: |
+          basic="$(printf 'x-token-auth:%s' "$BITBUCKET_TOKEN" | base64 -w0)"
+          echo "::add-mask::${basic}"
+          git -c "http.extraHeader=Authorization: Basic ${basic}" \
+            clone --depth 1 --branch "$CHILD_BASE" \
+            "https://bitbucket.org/${CHILD_WORKSPACE}/${CHILD_REPO}.git" child
+          git -C child checkout -b "$SYNC_BRANCH"
+
+      - name: Sync
+        id: sync
+        if: steps.token.outputs.ready == 'true'
+        run: |
+          flags="--require-manifest"
+          [ "$DRY_RUN" = "true" ] || flags="$flags --apply"
+          node scripts/sync-child.mjs child $flags | tee sync.log
+          if [ -n "$(git -C child status --porcelain)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push and open pull request
+        if: steps.sync.outputs.changed == 'true' && env.DRY_RUN != 'true'
+        run: |
+          short="${GITHUB_SHA::7}"
+          git -C child add -A
+          git -C child -c user.name="framework-sync" \
+            -c user.email="framework-sync@users.noreply.github.com" \
+            commit -q -m "Sync framework ${short}"
+          # The bot owns this branch and rebuilds it from the child's main each run.
+          basic="$(printf 'x-token-auth:%s' "$BITBUCKET_TOKEN" | base64 -w0)"
+          echo "::add-mask::${basic}"
+          git -C child -c "http.extraHeader=Authorization: Basic ${basic}" \
+            push --force origin "$SYNC_BRANCH"
+
+          api="https://api.bitbucket.org/2.0/repositories/${CHILD_WORKSPACE}/${CHILD_REPO}/pullrequests"
+          link="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+          {
+            printf 'Automated from framework commit [%s](%s).\n' "$short" "$link"
+            printf 'Conflicts were left as they are; resolve them in a local sync with `local` or `--take`.\n\n'
+            printf '```\n'
+            head -c 30000 sync.log
+            printf '\n```\n'
+          } > desc.md
+          body="$(jq -n \
+            --arg title "Framework sync (${short})" \
+            --arg src "$SYNC_BRANCH" \
+            --arg dest "$CHILD_BASE" \
+            --rawfile desc desc.md \
+            '{title: $title, description: $desc, source: {branch: {name: $src}}, destination: {branch: {name: $dest}}}')"
+          auth=(-H "Authorization: Bearer ${BITBUCKET_TOKEN}" -H "Content-Type: application/json")
+
+          existing="$(curl -sf "${auth[@]}" -G "$api" \
+            --data-urlencode "state=OPEN" \
+            --data-urlencode "q=source.branch.name=\"${SYNC_BRANCH}\"" | jq -r '.values[0].id // empty')"
+          if [ -n "$existing" ]; then
+            curl -sf "${auth[@]}" -X PUT "${api}/${existing}" -d "$body" > /dev/null
+            echo "Updated pull request #${existing}"
+          else
+            url="$(curl -sf "${auth[@]}" -X POST "$api" -d "$body" | jq -r '.links.html.href')"
+            echo "Opened ${url}"
+          fi
