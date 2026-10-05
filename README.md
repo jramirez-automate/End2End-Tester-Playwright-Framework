@@ -30,6 +30,7 @@ The conventions contract is [`AGENTS.md`](AGENTS.md). App knowledge lives in
 - [Publishing pipeline](#publishing-pipeline)
 - [QA artifact evals](#qa-artifact-evals)
 - [AI-assisted development](#ai-assisted-development)
+- [Syncing a child repo](#syncing-a-child-repo)
 - [Best practices](#best-practices)
 - [Troubleshooting](#troubleshooting)
 - [Documentation index](#documentation-index)
@@ -764,6 +765,42 @@ Nothing is vendored into this repo.
 `skills-lock.json` pins the source and hash of each vendored third-party skill. Where one
 disagrees with `AGENTS.md`, `AGENTS.md` wins.
 
+## Syncing a child repo
+
+A project repo that started as a copy of this framework has no shared git history with it, so
+framework changes reach it by copy, not merge:
+
+```bash
+npm run sync:child -- ../End2EndTester          # dry run: what would change
+npm run sync:child -- ../End2EndTester --diff   # the same, with diffs
+npm run sync:child -- ../End2EndTester --apply  # write it (child must be on a branch, not main)
+```
+
+Only framework-owned paths are copied (`scripts/`, `.claude/`, `.cursor/`, `.agents/skills/`,
+`templates/`, `src/fixtures.ts`, `src/utils/`, `src/types/` and the lint, format, husky and
+TypeScript config), always from this repo's committed `HEAD`. Specs, page objects, docs,
+`package.json` and `.env.*` are never touched; `package.json` differences are listed for you to
+merge by hand.
+
+The child records what it last received in `.framework-sync.json`. A file the child edited since
+then is a **conflict** and is left alone. Keep the child's version for good by adding the path to
+`local` (a trailing `/` covers a folder), or take the framework's with `--take=<path>` for one
+file or `--overwrite` for every conflict. Commit
+`.framework-sync.json` in the child with the synced files.
+
+Once a child has its first sync committed, updates flow on their own:
+
+- **Locally.** List child checkouts in the gitignored `.sync-children`, one path per line. After
+  a commit or pull lands on `main`, the `post-commit` / `post-merge` hooks apply new framework
+  changes into each child that is on a branch, ready for you to commit there. A child on `main`
+  is skipped with a notice. The hook never fails the git command.
+- **In CI.** `.github/workflows/sync-child.yml` runs on every push to `main` that touches a synced
+  path. It clones End2EndTester, applies the sync, and keeps one Bitbucket pull request open from
+  the bot-owned `framework-sync` branch, rebuilt from the child's `main` each run. It needs a
+  Bitbucket repository access token (Repositories: write, Pull requests: write) in the
+  `BITBUCKET_SYNC_TOKEN` secret and skips with a warning without it. Run it by hand from the
+  Actions tab; manual runs default to a dry run.
+
 ## Best practices
 
 ### Locators
@@ -863,5 +900,6 @@ const name = "My Order";         // WRONG — collisions and leftover rows
 | `npm run format` / `format:check` | Prettier |
 | `npm run scan:secrets` / `:staged` / `:self-test` | Secret scanner |
 | `npm run sync:ai` | Copy `.claude` agents, commands, rules and hooks into `.cursor` |
+| `npm run sync:child -- <path>` | Dry-run (or `--apply`) framework file updates into a child repo |
 | `npm run check:tool-sync` | Fail when `.claude` and `.cursor` drift |
 | `npm run -s app-source` | Show which checkout `APP_SOURCE_DIR` resolves to |

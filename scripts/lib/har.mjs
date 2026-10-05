@@ -40,7 +40,7 @@ function readZip(file) {
 }
 
 const SENSITIVE_HEADER =
-	/^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|x-amz-security-token)$/i;
+	/^(authorization|proxy-authorization|cookie|set-cookie|x-api-key|x-amz-security-token|securitytoken)$/i;
 const SENSITIVE_FIELD =
 	/("(?:access_token|id_token|refresh_token|password|client_secret)"\s*:\s*)"[^"]*"/gi;
 const isTextBody = (mime) => /json|text\/plain|xml|x-www-form-urlencoded/i.test(mime ?? "");

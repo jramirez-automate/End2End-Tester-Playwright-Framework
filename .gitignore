@@ -13,5 +13,8 @@ allure-results/
 allure-report/
 .gitcommands
 
+# Local child checkouts the post-commit/post-merge hook syncs into, one path per line.
+.sync-children
+
 # Evidence bundles (EVIDENCE=true). Regenerate when you need them.
 src/evidence/
