@@ -75,7 +75,7 @@ const INCLUDE = [
 	"templates/",
 	"tsconfig.json",
 ];
-const EXCLUDE = ["scripts/sync-child.mjs"];
+const EXCLUDE = ["scripts/sync-child.mjs", ".husky/post-commit", ".husky/post-merge"];
 
 function hasFlag(flag) {
 	return process.argv.includes(flag);
