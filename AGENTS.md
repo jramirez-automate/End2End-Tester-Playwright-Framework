@@ -22,6 +22,8 @@ credentials, so a fresh clone runs green.
   spec. Call the API through the `api` / `anonApi` fixtures, never the built-in
   `request` fixture, and read bodies with `readBody()` so each case carries its
   response as evidence. Details: the `api-testing` skill.
+- Write every test, UI or API, as `test.step` titles starting `GIVEN` / `WHEN` /
+  `THEN` / `AND`, with real values, so the step list reads as the scenario.
 - Author one test at a time. Run it alone. The failure that counts is the
   assertion of user-visible behaviour, not a setup error.
 - Check `docs/APP-MAP.md` before adding a route or a widget helper, and record
