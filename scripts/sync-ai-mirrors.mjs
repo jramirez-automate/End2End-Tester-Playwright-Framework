@@ -11,6 +11,9 @@
  * Skills are not copied either: each lives once in .agents/skills and is
  * symlinked into .claude/skills and .cursor/skills. --check verifies the links.
  *
+ * Rules change extension on the way across: Claude Code loads only `.md` from
+ * .claude/rules, Cursor only `.mdc` from .cursor/rules. Content stays identical.
+ *
  * Usage:
  *   node scripts/sync-ai-mirrors.mjs --from=claude
  *   node scripts/sync-ai-mirrors.mjs --from=cursor
@@ -26,6 +29,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIRS = ["agents", "commands", "rules", "hooks"];
 const SHARED_SKILLS = path.join(ROOT, ".agents", "skills");
 const EXTRA = ["README.md"];
+const RULE_EXT = { claude: ".md", cursor: ".mdc" };
+
+/** The same file's name on the other side: only rules differ, by extension. */
+function mirrorName(subdir, rel, fromSide, toSide) {
+	if (subdir !== "rules" || !rel.endsWith(RULE_EXT[fromSide])) return rel;
+	return rel.slice(0, -RULE_EXT[fromSide].length) + RULE_EXT[toSide];
+}
 
 function hasFlag(flag) {
 	return process.argv.includes(flag);
@@ -63,9 +73,10 @@ function copyFile(src, dest) {
 	}
 }
 
-function copyTree(fromRoot, toRoot, subdir) {
-	const srcDir = path.join(fromRoot, subdir);
-	const destDir = path.join(toRoot, subdir);
+function copyTree(fromSide, subdir) {
+	const toSide = fromSide === "claude" ? "cursor" : "claude";
+	const srcDir = path.join(ROOT, `.${fromSide}`, subdir);
+	const destDir = path.join(ROOT, `.${toSide}`, subdir);
 	if (!fs.existsSync(srcDir)) {
 		console.warn(`[sync-ai] skip missing ${path.relative(ROOT, srcDir)}`);
 		return 0;
@@ -73,7 +84,7 @@ function copyTree(fromRoot, toRoot, subdir) {
 	let n = 0;
 	for (const file of listFiles(srcDir)) {
 		const rel = relUnder(srcDir, file);
-		copyFile(file, path.join(destDir, rel));
+		copyFile(file, path.join(destDir, mirrorName(subdir, rel, fromSide, toSide)));
 		n++;
 	}
 	return n;
@@ -86,13 +97,13 @@ function pairedFiles() {
 		const b = path.join(ROOT, ".cursor", sub);
 		const names = new Set([
 			...listFiles(a).map((f) => relUnder(a, f)),
-			...listFiles(b).map((f) => relUnder(b, f)),
+			...listFiles(b).map((f) => mirrorName(sub, relUnder(b, f), "cursor", "claude")),
 		]);
 		for (const name of names) {
 			pairs.push({
 				rel: `${sub}/${name}`,
 				claude: path.join(a, name),
-				cursor: path.join(b, name),
+				cursor: path.join(b, mirrorName(sub, name, "claude", "cursor")),
 			});
 		}
 	}
@@ -179,7 +190,7 @@ function syncFrom(side) {
 	const fromRoot = path.join(ROOT, side === "claude" ? ".claude" : ".cursor");
 	const toRoot = path.join(ROOT, side === "claude" ? ".cursor" : ".claude");
 	let n = 0;
-	for (const sub of DIRS) n += copyTree(fromRoot, toRoot, sub);
+	for (const sub of DIRS) n += copyTree(side, sub);
 	for (const name of EXTRA) {
 		const src = path.join(fromRoot, name);
 		if (!fs.existsSync(src)) continue;
@@ -196,9 +207,9 @@ function bootstrap() {
 	const cursor = path.join(ROOT, ".cursor");
 	let n = 0;
 	for (const sub of ["agents", "commands", "hooks"]) {
-		n += copyTree(claude, cursor, sub);
+		n += copyTree("claude", sub);
 	}
-	n += copyTree(cursor, claude, "rules");
+	n += copyTree("cursor", "rules");
 	const readme = path.join(claude, "README.md");
 	if (fs.existsSync(readme)) {
 		copyFile(readme, path.join(cursor, "README.md"));

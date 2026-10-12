@@ -100,7 +100,7 @@ a Playwright tag filtered with `TICKET=<key>`, not a ticket folder.
 End2End-Tester-Playwright-Framework/
 │
 ├── .agents/skills/           # Shared skills, symlinked into .claude/skills and .cursor/skills
-├── .claude/ / .cursor/       # Agents (explorer, runner, evidence, publisher) + /e2e-ticket; .claude is the source
+├── .claude/ / .cursor/       # Agents (explorer, impact, runner, evidence, publisher) + /e2e-ticket, /e2e-impact; .claude is the source
 │   ├── rules/                # conventions, env approval, evidence visibility, publishing
 │   └── hooks                 # skill reminder (Claude prompt hook); hooks.json runs the sync check at session start (Cursor)
 ├── .husky/pre-commit         # scan-secrets --staged, then lint-staged
@@ -753,9 +753,11 @@ Nothing is vendored into this repo.
   `playwright-cli`, `playwright-generate-test`, `writing-for-agents`, `cursor-memory-curator`,
   `skill-eval-methodology`, `code-review`), symlinked into `.claude/skills/` and `.cursor/skills/`.
   `code-review` finds a ticket's spec through `docs/agents/issue-tracker.md`
-- `.claude/agents/` — explorer, runner, evidence, publisher
-- `.claude/commands/` — the `e2e-ticket` pipeline
-- `.claude/rules/` — conventions, environment approval, evidence visibility, publishing
+- `.claude/agents/` — explorer, impact, runner, evidence, publisher
+- `.claude/commands/` — the `e2e-ticket` pipeline, and `e2e-impact`, which diffs an app branch in
+  `APP_SOURCE_DIR` and selects only the specs that exercise what it changed
+- `.claude/rules/` — conventions, environment approval, evidence visibility, publishing. Saved as
+  `.md`, the only rule files Claude Code loads; the sync writes them to `.cursor/rules/` as `.mdc`
 - `.claude/hooks/` — the skill reminder `.claude/settings.json` runs on test-related prompts
 - `.cursor/` holds a copy of those four, made by `npm run sync:ai`. Edit `.claude/`, then sync; a
   direct edit to `.cursor/` is overwritten. Platform files are not copied: `.claude/settings.json`,

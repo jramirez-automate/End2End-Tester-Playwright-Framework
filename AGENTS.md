@@ -59,9 +59,11 @@ need no approval.
 ## Tooling layout
 
 - `.agents/skills/` — shared skills, symlinked into `.claude/skills/` and `.cursor/skills/`
-- `.claude/agents/`, `.cursor/agents/` — explorer, runner, evidence, publisher
-- `.claude/commands/`, `.cursor/commands/` — the `e2e-ticket` pipeline
-- `.claude/rules/`, `.cursor/rules/` — conventions, environment approval, evidence, publishing
+- `.claude/agents/`, `.cursor/agents/` — explorer, impact, runner, evidence, publisher
+- `.claude/commands/`, `.cursor/commands/` — the `e2e-ticket` pipeline, and `e2e-impact`
+  (an app branch's changes → the specs that cover them)
+- `.claude/rules/` (`.md`), `.cursor/rules/` (`.mdc`) — conventions, environment approval,
+  evidence, publishing. The sync swaps the extension; each tool loads only its own.
 
 `.claude/` is the source for agents, commands, rules and hooks; `.cursor/` is a
 copy. Edit under `.claude/`, then run `npm run sync:ai` — a direct edit to
