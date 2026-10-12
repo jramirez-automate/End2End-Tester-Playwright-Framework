@@ -22,12 +22,19 @@ credentials, so a fresh clone runs green.
   spec. Call the API through the `api` / `anonApi` fixtures, never the built-in
   `request` fixture, and read bodies with `readBody()` so each case carries its
   response as evidence. Details: the `api-testing` skill.
+- Write every test, UI or API, as `test.step` titles starting `GIVEN` / `WHEN` /
+  `THEN` / `AND`, with real values, so the step list reads as the scenario.
 - Author one test at a time. Run it alone. The failure that counts is the
   assertion of user-visible behaviour, not a setup error.
 - Check `docs/APP-MAP.md` before adding a route or a widget helper, and record
   what you learn there.
 - Credentials belong in gitignored `.env.<TEST_ENV>` and `.env.publish` only.
 - Read the app surgically. Never dump whole files or raw API responses into chat.
+- State your assumptions before you build, and ask when a ticket reads two ways.
+- Build only what the ticket asks for. Add an option or abstraction when a
+  second caller needs it.
+- Trace every changed line to the request. Report unrelated dead code or
+  untidy code and leave it in place.
 
 ## Commands
 
@@ -52,9 +59,11 @@ need no approval.
 ## Tooling layout
 
 - `.agents/skills/` — shared skills, symlinked into `.claude/skills/` and `.cursor/skills/`
-- `.claude/agents/`, `.cursor/agents/` — explorer, runner, evidence, publisher
-- `.claude/commands/`, `.cursor/commands/` — the `e2e-ticket` pipeline
-- `.claude/rules/`, `.cursor/rules/` — conventions, environment approval, evidence, publishing
+- `.claude/agents/`, `.cursor/agents/` — explorer, impact, runner, evidence, publisher
+- `.claude/commands/`, `.cursor/commands/` — the `e2e-ticket` pipeline, and `e2e-impact`
+  (an app branch's changes → the specs that cover them)
+- `.claude/rules/` (`.md`), `.cursor/rules/` (`.mdc`) — conventions, environment approval,
+  evidence, publishing. The sync swaps the extension; each tool loads only its own.
 
 `.claude/` is the source for agents, commands, rules and hooks; `.cursor/` is a
 copy. Edit under `.claude/`, then run `npm run sync:ai` — a direct edit to

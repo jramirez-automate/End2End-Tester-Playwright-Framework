@@ -11,11 +11,17 @@ test.describe("Todo list", { tag: "@DEMO-002" }, () => {
 		const todos = new TodoPage(page);
 		const title = e2eName("Todo");
 
-		await todos.open();
-		await todos.add(title);
+		await test.step("GIVEN the todo list is open", () => todos.open());
 
-		await expect(todos.item(title)).toBeVisible();
-		await expect(todos.counter).toHaveText(/1 item left/i);
+		await test.step(`WHEN the user adds "${title}"`, () => todos.add(title));
+
+		await test.step(`THEN "${title}" is listed`, async () => {
+			await expect(todos.item(title)).toBeVisible();
+		});
+
+		await test.step('AND the counter shows "1 item left"', async () => {
+			await expect(todos.counter).toHaveText(/1 item left/i);
+		});
 	});
 
 	test("completing an item moves it out of the active filter", async ({ page }) => {
@@ -23,16 +29,23 @@ test.describe("Todo list", { tag: "@DEMO-002" }, () => {
 		const done = e2eName("Done");
 		const pending = e2eName("Pending");
 
-		await todos.open();
-		await todos.add(done);
-		await todos.add(pending);
-		await todos.complete(done);
+		await test.step(`GIVEN the todo list has "${done}" and "${pending}"`, async () => {
+			await todos.open();
+			await todos.add(done);
+			await todos.add(pending);
+		});
 
-		await todos.filterBy("Active");
-		await expect(todos.item(pending)).toBeVisible();
-		await expect(todos.item(done)).toHaveCount(0);
+		await test.step(`WHEN the user completes "${done}"`, () => todos.complete(done));
 
-		await todos.filterBy("Completed");
-		await expect(todos.item(done)).toBeVisible();
+		await test.step(`THEN the "Active" filter shows "${pending}" but not "${done}"`, async () => {
+			await todos.filterBy("Active");
+			await expect(todos.item(pending)).toBeVisible();
+			await expect(todos.item(done)).toHaveCount(0);
+		});
+
+		await test.step(`AND the "Completed" filter shows "${done}"`, async () => {
+			await todos.filterBy("Completed");
+			await expect(todos.item(done)).toBeVisible();
+		});
 	});
 });

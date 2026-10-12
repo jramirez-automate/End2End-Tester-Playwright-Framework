@@ -16,18 +16,25 @@ test.describe("Sign in", { tag: "@smoke" }, () => {
 		const login = new LoginPage(page);
 		const inventory = new InventoryPage(page);
 
-		await login.signIn(username, password);
+		await test.step("WHEN the user signs in with this environment's credentials", () =>
+			login.signIn(username, password));
 
-		await expect(inventory.title).toHaveText("Products");
+		await test.step('THEN the "Products" page is shown', async () => {
+			await expect(inventory.title).toHaveText("Products");
+		});
 	});
 
 	test("invalid credentials are rejected with an error", async ({ page }) => {
 		const login = new LoginPage(page);
 
-		await login.open();
-		await login.submitCredentials("wrong_user", "wrong_password");
+		await test.step("GIVEN the user is on the sign-in page", () => login.open());
 
-		await expect(login.errorMessage).toBeVisible();
-		await expect(login.passwordInput).toBeVisible();
+		await test.step('WHEN the user submits "wrong_user" with "wrong_password"', () =>
+			login.submitCredentials("wrong_user", "wrong_password"));
+
+		await test.step("THEN an error is shown and the password field stays on screen", async () => {
+			await expect(login.errorMessage).toBeVisible();
+			await expect(login.passwordInput).toBeVisible();
+		});
 	});
 });

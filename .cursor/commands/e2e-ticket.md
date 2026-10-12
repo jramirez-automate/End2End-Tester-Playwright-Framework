@@ -20,19 +20,51 @@ Ticket key: `$ARGUMENTS`
 ## 1 · Requirements
 
 If the ticket key above is empty or is not a key like `ABC-123`, stop and ask
-for the key and its acceptance criteria. Nothing here fetches a ticket, so ask
-the user to paste the criteria.
+for the key and its acceptance criteria.
 
-If the ticket's summary, description, comments or links mention a Zendesk ticket
-(`Zendesk ticket #1546818`, `ZD: 1342215`, an `…zendesk.com/agent/tickets/…` URL), tell
-the user the id and ask them to print that ticket as a PDF and upload it here for
-additional context, so the checklist doesn't miss anything from the customer's report. Read it
-and fold the symptom, repro steps and expected behaviour into the checklist. If they decline,
-continue with what you have. Do not edit the ticket's description with it unless asked.
+**Fetch the ticket.** If an Atlassian MCP is configured, get it with `getJiraIssue`,
+requesting only the fields you need: summary, description, acceptance or testing
+criteria, parent, components, status, comments, attachments and remote links. Never
+echo the raw issue JSON. With no tracker MCP, ask the user to paste the ticket and
+its criteria.
 
-Read the ticket. Turn it into a numbered checklist of testable statements. Stop
-and ask if a requirement has no observable outcome. Check `COVERAGE.md`: if this
-is already covered, say so and ask what to add.
+**Show the issue first.** Give the user a condensed readout in chat, so they have
+the same context you do: summary, status, reporter and component, the reported
+symptom with repro and expected versus actual, and the key findings from the
+comment thread (root cause, the dev fix or PR, QA notes, Zendesk ids).
+
+Check `COVERAGE.md`: if this ticket or feature is already covered, say so and stop
+to ask what to add. Otherwise turn the ticket into a numbered checklist of testable
+behaviours, and note each criterion that can't be automated and why. Stop and ask
+if a requirement has no observable outcome.
+
+**Zendesk context.** Run this whenever the ticket points at Zendesk, however full
+the description is:
+
+- **A Zendesk id is mentioned.** Scan the summary, description, comments and remote
+  links for an id (`Zendesk ticket #1546818`, `ZD: 1342215`) or an
+  `…zendesk.com/agent/tickets/…` URL. If you find one, tell the user the id and ask
+  them to print that Zendesk ticket as a PDF and upload it here. Ask, then carry on
+  with the checklist if they decline or it isn't available.
+- **The ticket is thin** (no description, or a title or one-liner too thin to derive
+  criteria from). Check the issue's attachments for a Zendesk PDF export. If there
+  is one, name it and ask the user to download it from Jira and upload it here;
+  nothing here pulls attachment binaries. If there is neither an attachment nor a
+  Zendesk id, say so and continue with the checklist as it is. A thin description
+  alone doesn't block the pipeline.
+
+Once the PDF arrives, read it and take the customer-facing context: symptom, repro
+steps, expected behaviour, any acceptance detail. Re-derive the checklist from it
+before step 2; it also feeds the layer table and the test plan. If the PDF adds
+anything, show the whole readout again (ticket and Zendesk detail merged, with new
+or changed points marked) and the re-derived checklist, not just a diff.
+
+**Description edit (optional, thin tickets only).** When the description was thin
+and the ticket was not raised by support staff from a Zendesk template, show the
+user what you would add and ask. On yes, `editJiraIssue` the `description` (ADF
+`contentFormat`), appending an "Additional context (from Zendesk)" section. Never
+overwrite or delete what is there. For support-raised tickets skip the edit and
+keep the context in the test plan.
 
 Then draft the cases, using the `test-case-design` skill: write the checklist
 as `src/evidence/<key>/test-cases.json`, one `TC-00N` per item, from
