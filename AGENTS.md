@@ -28,6 +28,11 @@ credentials, so a fresh clone runs green.
   what you learn there.
 - Credentials belong in gitignored `.env.<TEST_ENV>` and `.env.publish` only.
 - Read the app surgically. Never dump whole files or raw API responses into chat.
+- State your assumptions before you build, and ask when a ticket reads two ways.
+- Build only what the ticket asks for. Add an option or abstraction when a
+  second caller needs it.
+- Trace every changed line to the request. Report unrelated dead code or
+  untidy code and leave it in place.
 
 ## Commands
 
