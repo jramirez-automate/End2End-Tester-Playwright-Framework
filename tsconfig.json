@@ -17,6 +17,7 @@
 		"playwright-report",
 		".auth",
 		"templates",
-		"evals"
+		"evals",
+		"dashboard"
 	]
 }

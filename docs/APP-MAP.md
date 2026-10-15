@@ -27,6 +27,8 @@ or a widget costs more than a couple of attempts to work out.
 | Attach an API response as the case's proof | `readBody` in `src/utils/api.ts` |
 | Status assertion that shows URL and body on failure | `describeResponse` in `src/utils/api.ts` |
 | Schema-check a response, naming the broken field | `parseWith` (zod) in `src/utils/api.ts` |
+| Centre the subject for an evidence shot, past smooth scrolling | `centerInViewport` in `src/utils/evidence.ts` |
+| One labelled before / after evidence image | `spliceScreenshots` in `src/utils/evidence.ts` |
 
 ## Quirks
 

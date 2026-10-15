@@ -60,6 +60,8 @@ need no approval.
 
 - `.agents/skills/` — shared skills, symlinked into `.claude/skills/` and `.cursor/skills/`
 - `.claude/agents/`, `.cursor/agents/` — explorer, impact, runner, evidence, publisher
+- `dashboard/` — E2E Control Room, its own package: after a change there, run
+ `npm test && npm run typecheck` inside it, since the root typecheck excludes it
 - `.claude/commands/`, `.cursor/commands/` — the `e2e-ticket` pipeline, and `e2e-impact`
   (an app branch's changes → the specs that cover them)
 - `.claude/rules/` (`.md`), `.cursor/rules/` (`.mdc`) — conventions, environment approval,

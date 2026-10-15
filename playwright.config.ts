@@ -102,7 +102,20 @@ export default defineConfig({
 					{ outputDir: string; env: string },
 				][])
 			: []),
+		...(process.env.PW_JSON_OUTPUT
+			? ([["json", { outputFile: process.env.PW_JSON_OUTPUT }]] as [
+					string,
+					{ outputFile: string },
+				][])
+			: []),
+		// The E2E Control Room dashboard sets PW_PROGRESS_FILE when it spawns a run.
+		...(process.env.PW_PROGRESS_FILE ? ([["./progress-reporter.ts"]] as [string][]) : []),
+		// Run history for the dashboard's Test results view (E2E_HISTORY=off to skip).
+		["./history-reporter.ts"],
 	],
+	// Both are no-ops unless the dashboard sets E2E_ENV_LOCK_URL.
+	globalSetup: "./src/tests/global-setup.ts",
+	globalTeardown: "./src/tests/global-teardown.ts",
 	use: {
 		baseURL,
 		actionTimeout: 15_000,

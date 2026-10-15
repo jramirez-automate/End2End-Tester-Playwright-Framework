@@ -1,0 +1,631 @@
+/*
+ * E2E Control Room — Tailwind v4 + daisyUI v5.
+ * Four visual identities (web/DESIGN.md), picked in Settings → Appearance and
+ * applied as data-theme on <html>: matrix (default), retro, futuristic, minimal.
+ * Each is a daisyUI theme + an override of the Tailwind tokens below, plus a
+ * scoped effects block further down. Components only ever use the tokens.
+ * Signal colors (ok / fault / standby / feed / tally) are semantic ONLY.
+ */
+@import "tailwindcss";
+
+@plugin "daisyui" {
+	themes: false;
+}
+
+@plugin "daisyui/theme" {
+	name: "matrix";
+	default: true;
+	color-scheme: dark;
+	--color-base-100: #020e05;
+	--color-base-200: #010903;
+	--color-base-300: #000400;
+	--color-base-content: #8cff9e;
+	--color-primary: #00ff41;
+	--color-primary-content: #000400;
+	--color-secondary: #3fe0ff;
+	--color-secondary-content: #000400;
+	--color-accent: #d8ffde;
+	--color-accent-content: #000400;
+	--color-neutral: #04170a;
+	--color-neutral-content: #8cff9e;
+	--color-info: #3fe0ff;
+	--color-info-content: #000400;
+	--color-success: #00ff41;
+	--color-success-content: #000400;
+	--color-warning: #ffd23f;
+	--color-warning-content: #000400;
+	--color-error: #ff3b3b;
+	--color-error-content: #000400;
+	--radius-selector: 0.125rem;
+	--radius-field: 0.125rem;
+	--radius-box: 0.125rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 0;
+	--noise: 0;
+}
+
+@plugin "daisyui/theme" {
+	name: "retro";
+	default: false;
+	color-scheme: light;
+	--color-base-100: #fbf3dc;
+	--color-base-200: #f6e8c4;
+	--color-base-300: #f1e4c3;
+	--color-base-content: #3b2414;
+	--color-primary: #c2410c;
+	--color-primary-content: #fff8ea;
+	--color-secondary: #1f5d73;
+	--color-secondary-content: #fff8ea;
+	--color-accent: #e8590c;
+	--color-accent-content: #fff8ea;
+	--color-neutral: #3b2414;
+	--color-neutral-content: #fbf3dc;
+	--color-info: #1f5d73;
+	--color-info-content: #fff8ea;
+	--color-success: #3f6b1f;
+	--color-success-content: #fff8ea;
+	--color-warning: #8a5a00;
+	--color-warning-content: #fff8ea;
+	--color-error: #a8321b;
+	--color-error-content: #fff8ea;
+	--radius-selector: 0.5rem;
+	--radius-field: 0.5rem;
+	--radius-box: 0.75rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 0;
+	--noise: 0;
+}
+
+@plugin "daisyui/theme" {
+	name: "futuristic";
+	default: false;
+	color-scheme: dark;
+	--color-base-100: #0c1428;
+	--color-base-200: #080e1d;
+	--color-base-300: #04060d;
+	--color-base-content: #e6f1ff;
+	--color-primary: #5eeaff;
+	--color-primary-content: #04060d;
+	--color-secondary: #7aa2ff;
+	--color-secondary-content: #04060d;
+	--color-accent: #ff2bd6;
+	--color-accent-content: #04060d;
+	--color-neutral: #14203e;
+	--color-neutral-content: #e6f1ff;
+	--color-info: #7aa2ff;
+	--color-info-content: #04060d;
+	--color-success: #2ee6b6;
+	--color-success-content: #04060d;
+	--color-warning: #ffc04d;
+	--color-warning-content: #04060d;
+	--color-error: #ff5c7a;
+	--color-error-content: #04060d;
+	--radius-selector: 0.25rem;
+	--radius-field: 0.25rem;
+	--radius-box: 0.375rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 0;
+	--noise: 0;
+}
+
+@plugin "daisyui/theme" {
+	name: "minimal";
+	default: false;
+	color-scheme: light;
+	--color-base-100: #ffffff;
+	--color-base-200: #f4f4f5;
+	--color-base-300: #fafafa;
+	--color-base-content: #18181b;
+	--color-primary: #18181b;
+	--color-primary-content: #ffffff;
+	--color-secondary: #1d4ed8;
+	--color-secondary-content: #ffffff;
+	--color-accent: #e11d48;
+	--color-accent-content: #ffffff;
+	--color-neutral: #18181b;
+	--color-neutral-content: #ffffff;
+	--color-info: #1d4ed8;
+	--color-info-content: #ffffff;
+	--color-success: #15803d;
+	--color-success-content: #ffffff;
+	--color-warning: #a16207;
+	--color-warning-content: #ffffff;
+	--color-error: #b91c1c;
+	--color-error-content: #ffffff;
+	--radius-selector: 0.375rem;
+	--radius-field: 0.375rem;
+	--radius-box: 0.5rem;
+	--size-selector: 0.25rem;
+	--size-field: 0.25rem;
+	--border: 1px;
+	--depth: 0;
+	--noise: 0;
+}
+
+/* Base tokens = Matrix. The other themes override them below. */
+@theme {
+	--font-display: "Share Tech Mono", "IBM Plex Mono", ui-monospace, monospace;
+	--font-body: "IBM Plex Mono", ui-monospace, monospace;
+	--font-mono: "IBM Plex Mono", ui-monospace, monospace;
+	/* Panels are slightly translucent so the rain reads through the gaps, never behind text. */
+	--color-ink-0: #000400;
+	--color-ink-1: rgb(2 14 5 / 0.94);
+	--color-ink-2: rgb(4 23 10 / 0.97);
+	--color-line: #124a20;
+	--color-bone: #8cff9e;
+	--color-putty: #4cc76a;
+	--color-tally: #d8ffde;
+	--color-standby: #ffd23f;
+	--color-ok: #00ff41;
+	--color-fault: #ff3b3b;
+	--color-feed: #3fe0ff;
+}
+
+:root {
+	--glow: 0 0 6px rgb(0 255 65 / 0.55);
+	--rain-fade: rgb(0 4 0 / 0.12);
+	--thumb-bg: #000;
+}
+
+/* Retro — 1970s print: cream stock, brown ink, an orange/mustard/brown racing stripe. */
+[data-theme="retro"] {
+	--font-display: "Righteous", "Work Sans", sans-serif;
+	--font-body: "Work Sans", system-ui, sans-serif;
+	--font-mono: "Courier Prime", ui-monospace, monospace;
+	--color-ink-0: #f1e4c3;
+	--color-ink-1: #fbf3dc;
+	--color-ink-2: #f6e8c4;
+	--color-line: #c8a46a;
+	--color-bone: #3b2414;
+	--color-putty: #6e4a2c;
+	--color-tally: #e8590c;
+	--color-standby: #8a5a00;
+	--color-ok: #3f6b1f;
+	--color-fault: #a8321b;
+	--color-feed: #1f5d73;
+	--thumb-bg: #1b130c;
+}
+
+/* Futuristic — a starship HUD: deep-space navy, glass panels, cyan light, a magenta live lamp. */
+[data-theme="futuristic"] {
+	--font-display: "Orbitron", "Exo 2", sans-serif;
+	--font-body: "Exo 2", system-ui, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, monospace;
+	--color-ink-0: #04060d;
+	--color-ink-1: rgb(12 20 40 / 0.62);
+	--color-ink-2: rgb(20 32 62 / 0.72);
+	--color-line: rgb(94 234 255 / 0.24);
+	--color-bone: #e6f1ff;
+	--color-putty: #93a7cc;
+	--color-tally: #ff2bd6;
+	--color-standby: #ffc04d;
+	--color-ok: #2ee6b6;
+	--color-fault: #ff5c7a;
+	--color-feed: #7aa2ff;
+	--glow: 0 0 8px rgb(94 234 255 / 0.55);
+	--thumb-bg: #000;
+}
+
+/* Minimal — white paper, near-black ink, hairlines, one typeface, nothing moves but the lamp. */
+[data-theme="minimal"] {
+	--font-display: "Inter", system-ui, sans-serif;
+	--font-body: "Inter", system-ui, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, monospace;
+	--color-ink-0: #fafafa;
+	--color-ink-1: #ffffff;
+	--color-ink-2: #f4f4f5;
+	--color-line: #e4e4e7;
+	--color-bone: #18181b;
+	--color-putty: #52525b;
+	--color-tally: #e11d48;
+	--color-standby: #a16207;
+	--color-ok: #15803d;
+	--color-fault: #b91c1c;
+	--color-feed: #1d4ed8;
+	--thumb-bg: #f4f4f5;
+}
+
+body {
+	background: var(--color-ink-0);
+	color: var(--color-bone);
+	font-family: var(--font-body);
+	font-size: 14px;
+}
+
+/* Keyboard focus (DESIGN.md quality floor) — feed blue, keyboard-only. */
+:focus-visible {
+	outline: 2px solid var(--color-feed);
+	outline-offset: 2px;
+}
+
+@layer components {
+	/* Letterspaced uppercase label — the display voice of the console. */
+	.eyebrow {
+		font-family: var(--font-display);
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+	}
+
+	/* Tally lamp — the one glowing element in the app. */
+	.lamp {
+		width: 8px;
+		height: 8px;
+		border-radius: 9999px;
+		background: var(--color-line);
+		flex-shrink: 0;
+	}
+	.lamp--tally {
+		background: var(--color-tally);
+		box-shadow: 0 0 12px var(--color-tally);
+		animation: lamp-pulse 2s ease-in-out infinite;
+	}
+	.lamp--standby {
+		background: var(--color-standby);
+		box-shadow: 0 0 8px color-mix(in srgb, var(--color-standby) 60%, transparent);
+	}
+	@keyframes lamp-pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.75;
+		}
+	}
+
+	/* LED segment meter — progress as a mixing-desk level meter, not a bar. */
+	.meter {
+		display: flex;
+		gap: 3px;
+		width: 100%;
+	}
+	.meter__seg {
+		height: 6px;
+		flex: 1;
+		border-radius: 1px;
+		background: var(--color-line);
+	}
+	.meter--mini .meter__seg {
+		height: 4px;
+	}
+	.meter--mini {
+		width: 72px;
+	}
+	.meter__seg--ok {
+		background: var(--color-ok);
+	}
+	.meter__seg--tally {
+		background: var(--color-tally);
+	}
+	.meter__seg--feed {
+		background: var(--color-feed);
+	}
+	.meter__seg--standby {
+		background: var(--color-standby);
+	}
+	.meter__seg--skipped {
+		background: var(--color-putty);
+		opacity: 0.4;
+	}
+
+	/* Monitor thumbnail crossfade layers */
+	.thumb__frame {
+		position: relative;
+		aspect-ratio: 16 / 10;
+		background: var(--thumb-bg, #0d0b09);
+		border-radius: 4px;
+		overflow: hidden;
+	}
+	.thumb__img {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.thumb__img--incoming {
+		opacity: 0;
+		transition: opacity 150ms ease-out;
+	}
+	.thumb__img--incoming.is-visible {
+		opacity: 1;
+	}
+
+	/* Rendered markdown (assistant text, summaries) */
+	.md {
+		line-height: 1.6;
+		overflow-wrap: anywhere;
+	}
+	.md p {
+		margin: 0 0 0.6em;
+	}
+	.md p:last-child {
+		margin-bottom: 0;
+	}
+	.md a {
+		color: var(--color-feed);
+		text-decoration: underline;
+	}
+	.md code {
+		font-family: var(--font-mono);
+		font-size: 0.85em;
+		background: var(--color-ink-2);
+		border: 1px solid var(--color-line);
+		border-radius: 3px;
+		padding: 0 4px;
+	}
+	.md pre {
+		background: var(--color-ink-2);
+		border: 1px solid var(--color-line);
+		border-radius: 6px;
+		padding: 10px;
+		overflow-x: auto;
+		margin: 0.6em 0;
+	}
+	.md pre code {
+		background: none;
+		border: none;
+		padding: 0;
+	}
+	.md ul,
+	.md ol {
+		padding-left: 1.4em;
+		margin: 0.4em 0;
+	}
+	.md h1,
+	.md h2,
+	.md h3,
+	.md h4 {
+		font-family: var(--font-display);
+		font-size: 1em;
+		font-weight: 600;
+		margin: 0.8em 0 0.4em;
+	}
+	.md table {
+		border-collapse: collapse;
+		margin: 0.6em 0;
+		font-size: 0.9em;
+	}
+	.md th,
+	.md td {
+		border: 1px solid var(--color-line);
+		padding: 4px 8px;
+	}
+}
+
+/* ---------------------------------------------------------------------------
+ * Per-theme effects — each block is scoped to its data-theme.
+ * ------------------------------------------------------------------------- */
+
+/* Matrix: digital rain, scanlines, phosphor glow, square corners, prompt cursor. */
+[data-theme="matrix"] {
+	/*
+	 * Digital rain canvas (components/DigitalRain.tsx) sits under everything. It
+	 * renders inside #root, so z-index -1 within #root's stacking context puts it
+	 * below in-flow content (0 would paint it over every non-positioned element).
+	 */
+	.rain {
+		position: fixed;
+		inset: 0;
+		z-index: -1;
+		opacity: 0.22;
+		pointer-events: none;
+	}
+	#root {
+		position: relative;
+		z-index: 1;
+	}
+
+	/* CRT scanlines over the whole screen — texture only, never interactive. */
+	body::after {
+		content: "";
+		position: fixed;
+		inset: 0;
+		z-index: 60;
+		pointer-events: none;
+		background: repeating-linear-gradient(to bottom, rgb(0 0 0 / 0.16) 0 1px, transparent 1px 3px);
+	}
+
+	/* Phosphor glow on the display voice and live numbers. */
+	.eyebrow,
+	h1,
+	h2 {
+		text-shadow: var(--glow);
+	}
+	.eyebrow {
+		font-size: 11px;
+		letter-spacing: 0.18em;
+	}
+
+	/* Terminal panels: hairline + a faint green bloom, square corners. */
+	.rounded-lg,
+	.rounded {
+		border-radius: 2px;
+	}
+	section.border-line,
+	.border-line.bg-ink-2 {
+		box-shadow:
+			inset 0 0 24px rgb(0 255 65 / 0.04),
+			0 0 14px rgb(0 255 65 / 0.05);
+	}
+
+	/* Prompt cursor after the wordmark. */
+	.wordmark::after {
+		content: "_";
+		margin-left: 2px;
+		animation: cursor-blink 1.1s steps(1) infinite;
+	}
+
+	/* Tally: the white-hot lead glyph with a green halo. */
+	.lamp--tally {
+		box-shadow:
+			0 0 6px var(--color-tally),
+			0 0 14px var(--color-ok);
+	}
+
+	a.link:hover,
+	.link:hover {
+		text-shadow: var(--glow);
+	}
+
+	::selection {
+		background: var(--color-ok);
+		color: #000;
+	}
+}
+
+/* Retro: racing stripe under the console strip, chunky rounded panels, warm offset shadow. */
+[data-theme="retro"] {
+	header {
+		margin-bottom: 9px;
+		box-shadow:
+			0 3px 0 #e8590c,
+			0 6px 0 #f2a541,
+			0 9px 0 #8b4513;
+	}
+	.eyebrow {
+		font-size: 11px;
+		font-weight: 400;
+		letter-spacing: 0.08em;
+	}
+	.rounded-lg {
+		border-radius: 14px;
+	}
+	section.border-line,
+	.border-line.bg-ink-2 {
+		border-width: 2px;
+		box-shadow: 4px 4px 0 #d9b77a;
+	}
+	.wordmark {
+		color: #c2410c;
+	}
+	.lamp--tally {
+		box-shadow: 0 0 0 2px #fbf3dc, 0 0 0 4px #e8590c;
+	}
+	::selection {
+		background: #f2a541;
+		color: #3b2414;
+	}
+}
+
+/* Futuristic: starfield grid + nebula wash, glass blur, HUD corner brackets, cyan glow. */
+[data-theme="futuristic"] {
+	body {
+		background:
+			radial-gradient(1200px 600px at 10% -10%, rgb(94 234 255 / 0.12), transparent 60%),
+			radial-gradient(900px 600px at 110% 110%, rgb(255 43 214 / 0.1), transparent 60%),
+			linear-gradient(rgb(94 234 255 / 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+			linear-gradient(90deg, rgb(94 234 255 / 0.05) 1px, transparent 1px) 0 0 / 40px 40px,
+			#04060d;
+		background-attachment: fixed;
+	}
+	header,
+	section.border-line,
+	.border-line.bg-ink-2 {
+		backdrop-filter: blur(10px);
+	}
+	section.border-line {
+		position: relative;
+		box-shadow:
+			inset 0 0 30px rgb(94 234 255 / 0.05),
+			0 0 24px rgb(94 234 255 / 0.06);
+	}
+	/* HUD corner brackets, top-left and bottom-right. */
+	section.border-line::before,
+	section.border-line::after {
+		content: "";
+		position: absolute;
+		width: 14px;
+		height: 14px;
+		pointer-events: none;
+		border-color: #5eeaff;
+		border-style: solid;
+	}
+	section.border-line::before {
+		top: -1px;
+		left: -1px;
+		border-width: 2px 0 0 2px;
+	}
+	section.border-line::after {
+		right: -1px;
+		bottom: -1px;
+		border-width: 0 2px 2px 0;
+	}
+	.eyebrow {
+		letter-spacing: 0.24em;
+		text-shadow: var(--glow);
+	}
+	h1 {
+		font-family: var(--font-display);
+		letter-spacing: 0.06em;
+		text-shadow: var(--glow);
+	}
+	.wordmark {
+		color: #5eeaff;
+	}
+	.lamp--tally {
+		box-shadow:
+			0 0 8px #ff2bd6,
+			0 0 18px rgb(255 43 214 / 0.6);
+	}
+	.meter__seg {
+		box-shadow: 0 0 6px currentColor;
+	}
+	::selection {
+		background: rgb(94 234 255 / 0.35);
+		color: #fff;
+	}
+}
+
+/* Minimal: quiet labels, no glow or texture, softer corners. */
+[data-theme="minimal"] {
+	.eyebrow {
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+	}
+	.lamp--tally,
+	.lamp--standby {
+		box-shadow: none;
+	}
+	.rounded-lg {
+		border-radius: 10px;
+	}
+	::selection {
+		background: #18181b;
+		color: #fff;
+	}
+}
+
+@keyframes cursor-blink {
+	50% {
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.lamp--tally,
+	.wordmark::after {
+		animation: none;
+	}
+	.thumb__img--incoming {
+		transition: none;
+	}
+	/* Spinners hold still — every loader sits next to text that says what's happening. */
+	.loading {
+		animation: none;
+	}
+	.transition-colors,
+	.transition-transform,
+	.tab {
+		transition: none;
+	}
+}

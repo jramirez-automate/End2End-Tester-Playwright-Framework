@@ -509,6 +509,11 @@ Declare failures that are already raised defects under `resolutions` in `allurer
 there), then raise the quality gate's `successRate` so only a *new* failure breaks it. Never
 hand-edit `known-issues.json`; the report writes that file itself.
 
+**The E2E Control Room** (`dashboard/`) is a local web app that starts and supervises
+`/e2e-ticket` runs and reads what the suite already produced: evidence bundles, `COVERAGE.md`
+and run history. `npm --prefix dashboard install` once, then `npm run dashboard:demo` (a mock
+pipeline, no Claude needed) or `npm run dashboard`. Details: [`dashboard/README.md`](dashboard/README.md).
+
 ## Evidence
 
 **Evidence is the acceptance record** — TC ids, criteria, signed-off media. Allure has no notion
@@ -884,6 +889,7 @@ const name = "My Order";         // WRONG — collisions and leftover rows
 | [`.env.example`](.env.example) | Suite, Allure and eval settings, with comments |
 | [`.env.publish.example`](.env.publish.example) | Publishing providers and tokens, with comments |
 | [`templates/`](templates/) | UI spec, API spec and page-object scaffolds, test-case plan, chat card |
+| [`dashboard/README.md`](dashboard/README.md) | E2E Control Room: run supervision and read-only evidence views |
 
 ## NPM scripts
 
@@ -902,6 +908,7 @@ const name = "My Order";         // WRONG — collisions and leftover rows
 | `npm run format` / `format:check` | Prettier |
 | `npm run scan:secrets` / `:staged` / `:self-test` | Secret scanner |
 | `npm run sync:ai` | Copy `.claude` agents, commands, rules and hooks into `.cursor` |
+| `npm run dashboard` / `dashboard:demo` | E2E Control Room on http://localhost:5173 (`npm --prefix dashboard install` first) |
 | `npm run sync:child -- <path>` | Dry-run (or `--apply`) framework file updates into a child repo |
 | `npm run check:tool-sync` | Fail when `.claude` and `.cursor` drift |
 | `npm run -s app-source` | Show which checkout `APP_SOURCE_DIR` resolves to |

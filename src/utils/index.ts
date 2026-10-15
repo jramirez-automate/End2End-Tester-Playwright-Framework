@@ -25,3 +25,5 @@ export {
 export type { ApiAuth } from "./api";
 export { waitForModalDetachedThenToast, collectPageErrors } from "./interactions";
 export type { ModalThenToastOptions, CollectedPageErrors } from "./interactions";
+export { centerInViewport, spliceScreenshots } from "./evidence";
+export type { EvidencePanel } from "./evidence";

@@ -563,6 +563,12 @@ async function cmdBug() {
 	}
 
 	const uploads = [...copies, ...hars];
+	const record = { raisedFrom: parent, ...(tc ? { tc } : {}), media: uploads.map((u) => u.name) };
+	if (dryRun) log.plan(`write ${dir}/bug.json`);
+	else {
+		fs.mkdirSync(dir, { recursive: true });
+		fs.writeFileSync(path.join(dir, "bug.json"), `${JSON.stringify(record, null, 2)}\n`);
+	}
 	if (config.tracker !== "jira") {
 		log.warn(
 			`tracker "${config.tracker}" cannot host attachments — attach ${uploads.map((c) => c.name).join(", ")} by hand`,

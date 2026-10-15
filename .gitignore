@@ -11,6 +11,8 @@ playwright-report/
 src/test-results/
 allure-results/
 allure-report/
+# One JSON per Playwright run (history-reporter.ts), read by the dashboard.
+run-history/
 .gitcommands
 
 # Local child checkouts the post-commit/post-merge hook syncs into, one path per line.
